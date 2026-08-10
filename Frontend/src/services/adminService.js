@@ -1,6 +1,7 @@
 import { buses as busDefaults } from "../data/buses.js";
 import { trips } from "../data/trips.js";
 import { toDateInputValue } from "../utils/date.js";
+import { apiRequest, backendEnabled } from "./api.js";
 
 const KEYS = {
   buses: "jaatra.admin.buses",
@@ -108,10 +109,12 @@ const maintenanceDefaults = busDefaults.slice(0, 8).map((bus, index) => ({
 }));
 
 export async function getAdminBuses() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/buses")).buses;
   return readJson(KEYS.buses, busDefaults);
 }
 
 export async function saveBus(input) {
+  if (backendEnabled) return (await apiRequest("/admin/transport/buses", { method: "PUT", body: input })).bus;
   const current = await getAdminBuses();
   const existing = current.find((bus) => bus.id === input.id);
   const bus = {
@@ -128,14 +131,17 @@ export async function saveBus(input) {
 }
 
 export async function deleteBus(id) {
+  if (backendEnabled) return apiRequest(`/admin/transport/buses/${encodeURIComponent(id)}`, { method: "DELETE" });
   return writeJson(KEYS.buses, (await getAdminBuses()).filter((bus) => bus.id !== id));
 }
 
 export async function getAdminRoutes() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/routes")).routes;
   return readJson(KEYS.routes, routeDefaults);
 }
 
 export async function saveRoute(input) {
+  if (backendEnabled) return (await apiRequest("/admin/transport/routes", { method: "PUT", body: input })).route;
   const current = await getAdminRoutes();
   const existing = current.find((route) => route.id === input.id);
   const route = { ...existing, ...input, id: input.id || makeId("RTE"), estimatedMinutes: Number(input.estimatedMinutes) };
@@ -144,14 +150,17 @@ export async function saveRoute(input) {
 }
 
 export async function deleteRoute(id) {
+  if (backendEnabled) return apiRequest(`/admin/transport/routes/${encodeURIComponent(id)}`, { method: "DELETE" });
   return writeJson(KEYS.routes, (await getAdminRoutes()).filter((route) => route.id !== id));
 }
 
 export async function getAdminSchedules() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/schedules")).schedules;
   return readJson(KEYS.schedules, scheduleDefaults);
 }
 
 export async function saveSchedule(input) {
+  if (backendEnabled) return (await apiRequest("/admin/transport/schedules", { method: "PUT", body: input })).schedule;
   const current = await getAdminSchedules();
   const existing = current.find((schedule) => schedule.id === input.id);
   const schedule = { ...existing, ...input, id: input.id || makeId("SCH"), status: input.status || "Scheduled" };
@@ -160,35 +169,42 @@ export async function saveSchedule(input) {
 }
 
 export async function deleteSchedule(id) {
+  if (backendEnabled) return apiRequest(`/admin/transport/schedules/${encodeURIComponent(id)}`, { method: "DELETE" });
   return writeJson(KEYS.schedules, (await getAdminSchedules()).filter((schedule) => schedule.id !== id));
 }
 
 export async function getAdminReservations() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/reservations")).reservations;
   const actual = readJson(KEYS.reservations, []);
   return [...actual.map((item) => ({ ...item, boardingStatus: item.boardingStatus || "Not Boarded" })), ...seededReservations];
 }
 
 export async function getAdminUsers() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/users")).users;
   return readJson(KEYS.users, userDefaults);
 }
 
 export async function updateUser(id, updates) {
+  if (backendEnabled) return (await apiRequest(`/admin/transport/users/${encodeURIComponent(id)}`, { method: "PUT", body: updates })).user;
   const users = (await getAdminUsers()).map((user) => user.id === id ? { ...user, ...updates } : user);
   writeJson(KEYS.users, users);
   return users.find((user) => user.id === id);
 }
 
 export async function getAdminDrivers() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/drivers")).drivers;
   return readJson(KEYS.drivers, driverDefaults);
 }
 
 export async function updateDriver(id, updates) {
+  if (backendEnabled) return (await apiRequest(`/admin/transport/drivers/${encodeURIComponent(id)}`, { method: "PUT", body: updates })).driver;
   const drivers = (await getAdminDrivers()).map((driver) => driver.id === id ? { ...driver, ...updates } : driver);
   writeJson(KEYS.drivers, drivers);
   return drivers.find((driver) => driver.id === id);
 }
 
 export async function getMaintenanceRecords() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/maintenance")).maintenance;
   const records = readJson(KEYS.maintenance, maintenanceDefaults);
   const operations = readJson(KEYS.driverOperations, {});
   const latestReports = operations.conditionReports || [];
@@ -199,6 +215,7 @@ export async function getMaintenanceRecords() {
 }
 
 export async function updateMaintenance(id, updates) {
+  if (backendEnabled) return (await apiRequest(`/admin/transport/maintenance/${encodeURIComponent(id)}`, { method: "PUT", body: updates })).maintenance;
   const stored = readJson(KEYS.maintenance, maintenanceDefaults);
   const records = stored.map((record) => record.id === id ? { ...record, ...updates } : record);
   writeJson(KEYS.maintenance, records);
@@ -206,6 +223,7 @@ export async function updateMaintenance(id, updates) {
 }
 
 export async function getOperationalAlerts() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/alerts")).alerts;
   const operations = readJson(KEYS.driverOperations, {});
   return {
     conditions: operations.conditionReports || [],
@@ -215,6 +233,7 @@ export async function getOperationalAlerts() {
 }
 
 export async function getAdminOverview() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/overview")).overview;
   const [buses, schedules, reservations, maintenance, alerts] = await Promise.all([
     getAdminBuses(),
     getAdminSchedules(),
@@ -242,6 +261,7 @@ export async function getAdminOverview() {
 }
 
 export async function getAnalytics() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/analytics")).analytics;
   const reservations = await getAdminReservations();
   return {
     daily: [22, 31, 27, 42, 48, 35, Math.max(18, reservations.length * 4)],

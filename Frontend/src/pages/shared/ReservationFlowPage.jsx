@@ -8,18 +8,20 @@ import SeatMap from "../../components/reservation/SeatMap";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { useAuth } from "../../context/AuthContext";
-import { getBusesForRole } from "../../utils/busAccess";
 import { addDays, formatDisplayDate, toDateInputValue } from "../../utils/date";
-import { getTripsForBus } from "../../data/trips";
 import { createReservation, getReservedSeats } from "../../services/reservationService";
 import { getUnavailableSeatsForCapacity } from "../../utils/seats";
+import { getBusesByRole } from "../../services/busService";
+import { getSchedules } from "../../services/scheduleService";
+import Loading from "../../components/common/Loading";
 
 export default function ReservationFlowPage({ role }) {
   const { user, setToast } = useAuth();
   const [searchParams] = useSearchParams();
-  const buses = getBusesForRole(role);
-  const initialBusId = searchParams.get("busId") || buses[0]?.id;
-  const [busId, setBusId] = useState(initialBusId);
+  const [buses, setBuses] = useState([]);
+  const [allTrips, setAllTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busId, setBusId] = useState(searchParams.get("busId") || "");
   const [date, setDate] = useState(toDateInputValue());
   const [tripId, setTripId] = useState("");
   const [selectedSeat, setSelectedSeat] = useState("");
@@ -29,12 +31,20 @@ export default function ReservationFlowPage({ role }) {
   const [error, setError] = useState("");
 
   const selectedBus = buses.find((bus) => bus.id === busId);
-  const trips = useMemo(() => getTripsForBus(busId), [busId]);
+  const trips = useMemo(() => allTrips.filter((trip) => trip.busId === busId), [allTrips, busId]);
   const selectedTrip = trips.find((trip) => trip.id === tripId) || trips[0];
   const unavailableSeats = useMemo(
     () => getUnavailableSeatsForCapacity(selectedBus?.capacity || 44),
     [selectedBus?.capacity]
   );
+
+  useEffect(() => {
+    Promise.all([getBusesByRole(role), getSchedules()]).then(([busData, tripData]) => {
+      setBuses(busData);
+      setAllTrips(tripData.filter((trip) => busData.some((bus) => bus.id === trip.busId)));
+      setBusId((current) => current || busData[0]?.id || "");
+    }).finally(() => setLoading(false));
+  }, [role]);
 
   useEffect(() => {
     if (trips[0] && !trips.some((trip) => trip.id === tripId)) {
@@ -52,6 +62,8 @@ export default function ReservationFlowPage({ role }) {
       }
     });
   }, [date, selectedSeat, selectedTrip]);
+
+  if (loading) return <DashboardLayout><Loading label="Loading available trips" /></DashboardLayout>;
 
   if (!selectedBus) {
     return <Navigate to={`/${role}/today-buses`} replace />;

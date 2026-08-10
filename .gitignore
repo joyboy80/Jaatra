@@ -1,0 +1,15 @@
+# Frontend dependencies, builds, and local configuration
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.env
+Frontend/.env.*
+!Frontend/.env.example
+
+# Backend dependencies and local configuration
+backend/node_modules/
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+coverage/
+npm-debug.log*

@@ -5,7 +5,9 @@ import StatCard from "../../components/common/StatCard";
 import PortalBusCard from "../../components/bus/PortalBusCard";
 import Badge from "../../components/common/Badge";
 import { useAuth } from "../../context/AuthContext";
-import { getBusesForRole, getRoleBusLabel } from "../../utils/busAccess";
+import { getRoleBusLabel } from "../../utils/busAccess";
+import { getBusesByRole } from "../../services/busService";
+import { useEffect, useState } from "react";
 
 const roleDashboardCopy = {
   student: {
@@ -33,7 +35,8 @@ const roleDashboardCopy = {
 
 export default function PortalDashboard({ role }) {
   const { user } = useAuth();
-  const buses = getBusesForRole(role);
+  const [buses, setBuses] = useState([]);
+  useEffect(() => { getBusesByRole(role).then(setBuses); }, [role]);
   const upcomingBus = buses[0];
   const totalSeats = buses.reduce((sum, bus) => sum + bus.availableSeats, 0);
   const copy = roleDashboardCopy[role];

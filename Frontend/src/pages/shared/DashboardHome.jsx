@@ -5,7 +5,8 @@ import PageHeader from "../../components/layout/PageHeader";
 import BusStatusCard from "../../components/bus/BusStatusCard";
 import BusTable from "../../components/bus/BusTable";
 import DashboardLayout from "../../layouts/DashboardLayout";
-import { busStats, buses } from "../../data/buses";
+import { useEffect, useMemo, useState } from "react";
+import { getBuses, getBusesByRole } from "../../services/busService";
 
 const roleCopy = {
   student: {
@@ -53,7 +54,17 @@ function StatCard({ icon: Icon, label, value, tone = "text-jaatra-teal" }) {
 
 export default function DashboardHome({ role }) {
   const copy = roleCopy[role];
-  const visibleBuses = role === "admin" ? buses : buses.slice(0, 6);
+  const [buses, setBuses] = useState([]);
+  useEffect(() => {
+    (role === "admin" ? getBuses() : getBusesByRole(role)).then(setBuses);
+  }, [role]);
+  const visibleBuses = buses.slice(0, role === "admin" ? buses.length : 6);
+  const busStats = useMemo(() => ({
+    total: buses.length,
+    active: buses.filter((bus) => !["Arrived", "Offline", "Under Maintenance"].includes(bus.status)).length,
+    availableSeats: buses.reduce((sum, bus) => sum + Number(bus.availableSeats || 0), 0),
+    delayed: buses.filter((bus) => bus.status === "Delayed").length,
+  }), [buses]);
 
   return (
     <DashboardLayout>

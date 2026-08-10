@@ -2,10 +2,13 @@ import { buses as busData } from "../data/buses.js";
 import { trips } from "../data/trips.js";
 import { getMaintenanceRecords, getOperationalAlerts } from "./adminService.js";
 import { getReservations } from "./reservationService.js";
-import { getTrackingSnapshot } from "./trackingService.js";
+import { getLiveLocations, getTrackingSnapshot } from "./trackingService.js";
 import { getRouteRecommendation } from "./recommendationService.js";
 import { getBusesForRole, parseDepartureMinutes } from "../utils/busAccess.js";
 import { toDateInputValue } from "../utils/date.js";
+import { apiRequest, backendEnabled } from "./api.js";
+import { getBusesByRole } from "./busService.js";
+import { getSchedules } from "./scheduleService.js";
 
 const CHAT_PREFIX = "jaatra.ai.conversation";
 
@@ -49,12 +52,16 @@ export function clearConversation(userId) {
 }
 
 export async function getAIContext({ user, role }) {
-  const [reservations, maintenance, alerts] = await Promise.all([
+  const statusPromise = backendEnabled
+    ? apiRequest("/transport/status")
+    : Promise.all([getMaintenanceRecords(), getOperationalAlerts()]).then(([maintenance, alerts]) => ({ maintenance, alerts }));
+  const [reservations, status, availableBuses, tracking, schedules] = await Promise.all([
     getReservations(user.id),
-    getMaintenanceRecords(),
-    getOperationalAlerts(),
+    statusPromise,
+    backendEnabled ? getBusesByRole(role) : Promise.resolve(getBusesForRole(role)),
+    backendEnabled ? getLiveLocations() : Promise.resolve(getTrackingSnapshot()),
+    backendEnabled ? getSchedules() : Promise.resolve(trips),
   ]);
-  const tracking = getTrackingSnapshot();
   const activeReservation = reservations.find((reservation) => reservation.status === "Confirmed" && reservation.date >= toDateInputValue()) || null;
   const reservedBus = activeReservation ? tracking.find((bus) => bus.id === activeReservation.busId) || null : null;
   return {
@@ -63,11 +70,11 @@ export async function getAIContext({ user, role }) {
     reservations,
     activeReservation,
     reservedBus,
-    availableBuses: getBusesForRole(role),
+    availableBuses,
     tracking,
-    maintenance,
-    delayReports: alerts.delays,
-    schedules: trips,
+    maintenance: status.maintenance,
+    delayReports: status.alerts.delays,
+    schedules,
   };
 }
 
@@ -102,7 +109,7 @@ export async function askJaatraAI({ prompt, user, role }) {
 
   if (lower.includes("after 5")) {
     const allowedIds = new Set(context.availableBuses.map((item) => item.id));
-    const lateTrips = trips.filter((trip) => allowedIds.has(trip.busId) && parseDepartureMinutes(trip.departureTime) >= 17 * 60);
+    const lateTrips = context.schedules.filter((trip) => allowedIds.has(trip.busId) && parseDepartureMinutes(trip.departureTime) >= 17 * 60);
     return answer(lateTrips.length ? `Available after 5 PM: ${lateTrips.map((trip) => `${trip.busName} at ${trip.departureTime}`).join(", ")}.` : "There are no scheduled departures after 5 PM in the current timetable. The latest service leaves at 4:30 PM.");
   }
 
@@ -126,7 +133,7 @@ export async function askJaatraAI({ prompt, user, role }) {
   }
 
   if ((lower.includes("seat") || lower.includes("how many")) && bus) {
-    const record = busData.find((item) => item.id === bus.id);
+    const record = backendEnabled ? bus : busData.find((item) => item.id === bus.id);
     return answer(`${bus.name} currently has ${record?.availableSeats ?? bus.availableSeats} seats available out of ${record?.capacity ?? bus.capacity}.`);
   }
 

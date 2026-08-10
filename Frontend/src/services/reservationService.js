@@ -1,5 +1,6 @@
 import { trips } from "../data/trips.js";
 import { createNotification } from "./notificationService.js";
+import { apiRequest, backendEnabled } from "./api.js";
 
 const STORAGE_KEY = "jaatra.reservations";
 const TICKET_KEY = "jaatra.tickets";
@@ -37,15 +38,18 @@ function seededReservedSeats(tripId, date) {
 }
 
 export async function getReservations(userId) {
+  if (backendEnabled) return (await apiRequest("/transport/reservations")).reservations;
   const reservations = readJson(STORAGE_KEY, []);
   return reservations.filter((reservation) => reservation.userId === userId);
 }
 
 export async function getAllReservations() {
+  if (backendEnabled) return (await apiRequest("/admin/transport/reservations")).reservations;
   return readJson(STORAGE_KEY, []);
 }
 
 export async function getReservedSeats(tripId, date) {
+  if (backendEnabled) return (await apiRequest(`/transport/reservations/seats?tripId=${encodeURIComponent(tripId)}&date=${encodeURIComponent(date)}`)).seats;
   const reservations = readJson(STORAGE_KEY, []);
   const bookedSeats = reservations
     .filter((reservation) => reservation.tripId === tripId && reservation.date === date && reservation.status !== "Cancelled")
@@ -55,6 +59,7 @@ export async function getReservedSeats(tripId, date) {
 }
 
 export async function createReservation({ user, role, tripId, date, seatNumber }) {
+  if (backendEnabled) return apiRequest("/transport/reservations", { method: "POST", body: { tripId, date, seatNumber } });
   const trip = trips.find((item) => item.id === tripId);
 
   if (!trip) {
@@ -113,6 +118,7 @@ export async function createReservation({ user, role, tripId, date, seatNumber }
 }
 
 export async function cancelReservation(bookingId, userId) {
+  if (backendEnabled) return (await apiRequest(`/transport/reservations/${encodeURIComponent(bookingId)}`, { method: "DELETE" })).reservation;
   const reservations = readJson(STORAGE_KEY, []);
   const tickets = readJson(TICKET_KEY, []);
   let updatedReservation = null;

@@ -1,0 +1,25 @@
+{
+  "name": "jaatra-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node --watch src/server.js",
+    "start:prod": "node src/server.js",
+    "test": "node --test --experimental-test-isolation=none",
+    "check": "node --check src/server.js && node --check src/app.js",
+    "email:check": "node scripts/check-email.js",
+    "admin:create": "node scripts/create-admin.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.55.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "nodemailer": "^7.0.0"
+  }
+}

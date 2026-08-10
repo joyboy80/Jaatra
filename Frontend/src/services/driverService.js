@@ -1,4 +1,6 @@
 import { assignedBus, driverProfile, getDriverTrips, seededPassengers } from "../data/driverOperations.js";
+import { apiRequest, backendEnabled } from "./api.js";
+import { getStoredAuth } from "./authService.js";
 
 const OPERATIONS_KEY = "jaatra.driver.operations";
 const RESERVATION_KEY = "jaatra.reservations";
@@ -40,6 +42,35 @@ function makeId(prefix) {
 }
 
 export async function getAssignedTrips() {
+  if (backendEnabled) {
+    const nextTrips = (await apiRequest("/driver/transport/trips")).trips;
+    const first = nextTrips[0];
+    const user = getStoredAuth()?.user;
+    if (user) Object.assign(driverProfile, { id: user.universityId || user.id, name: user.name, phone: user.phone });
+    if (first) Object.assign(assignedBus, {
+      id: first.busId,
+      name: first.busName,
+      number: first.busNumber,
+      type: first.busCategory,
+      capacity: first.capacity,
+      route: first.route,
+      currentLocation: { label: first.currentLocation || "Transport Yard" },
+      nextStop: first.nextStop,
+      eta: first.eta,
+    });
+    else Object.assign(assignedBus, {
+      id: "",
+      name: "Unassigned",
+      number: "—",
+      type: "No bus assigned",
+      capacity: 0,
+      route: "No active route",
+      currentLocation: { label: "Transport Yard" },
+      nextStop: "—",
+      eta: "—",
+    });
+    return nextTrips;
+  }
   const operations = getOperations();
   return getDriverTrips().map((trip) => ({
     ...trip,
@@ -76,6 +107,7 @@ function allTickets() {
 }
 
 export async function getPassengerManifest(tripId) {
+  if (backendEnabled) return (await apiRequest(`/driver/transport/trips/${encodeURIComponent(tripId)}/passengers`)).passengers;
   const trips = await getAssignedTrips();
   const trip = trips.find((item) => item.id === tripId);
   if (!trip) return [];
@@ -102,6 +134,7 @@ export async function getPassengerManifest(tripId) {
 }
 
 export async function getTripSummary(tripId) {
+  if (backendEnabled) return (await apiRequest(`/driver/transport/trips/${encodeURIComponent(tripId)}/summary`)).summary;
   const trip = (await getAssignedTrips()).find((item) => item.id === tripId);
   const passengers = await getPassengerManifest(tripId);
   const activePassengers = passengers.filter((passenger) => passenger.boardingStatus !== "Cancelled");
@@ -117,6 +150,7 @@ export async function getTripSummary(tripId) {
 }
 
 export async function verifyTicket(ticketId, currentTripId) {
+  if (backendEnabled) return (await apiRequest("/driver/transport/tickets/verify", { method: "POST", body: { ticketId, tripId: currentTripId } })).ticket;
   const normalizedId = ticketId.trim().toUpperCase();
   const trip = (await getAssignedTrips()).find((item) => item.id === currentTripId);
   const ticket = allTickets().find((item) => item.ticketId.toUpperCase() === normalizedId);
@@ -156,6 +190,8 @@ export async function updateTripStatus(tripId, status) {
   const allowed = ["Upcoming", "Boarding", "In Progress", "Completed", "Cancelled"];
   if (!allowed.includes(status)) throw new Error("Unsupported trip status.");
 
+  if (backendEnabled) return (await apiRequest(`/driver/transport/trips/${encodeURIComponent(tripId)}/status`, { method: "PATCH", body: { status } })).trip;
+
   const operations = getOperations();
   operations.tripStatuses[tripId] = status;
   saveOperations(operations);
@@ -163,6 +199,7 @@ export async function updateTripStatus(tripId, status) {
 }
 
 export async function submitConditionReport(report) {
+  if (backendEnabled) return (await apiRequest("/driver/transport/reports/condition", { method: "POST", body: report })).report;
   const operations = getOperations();
   const saved = { ...report, id: makeId("COND"), driverId: driverProfile.id, createdAt: new Date().toISOString() };
   operations.conditionReports.unshift(saved);
@@ -171,6 +208,7 @@ export async function submitConditionReport(report) {
 }
 
 export async function submitDelayReport(report) {
+  if (backendEnabled) return (await apiRequest("/driver/transport/reports/delay", { method: "POST", body: report })).report;
   const operations = getOperations();
   const saved = { ...report, id: makeId("DLY"), driverId: driverProfile.id, createdAt: new Date().toISOString() };
   operations.delayReports.unshift(saved);
@@ -179,6 +217,7 @@ export async function submitDelayReport(report) {
 }
 
 export async function sendEmergencyAlert(alert) {
+  if (backendEnabled) return (await apiRequest("/driver/transport/reports/emergency", { method: "POST", body: alert })).report;
   const operations = getOperations();
   const saved = { ...alert, id: makeId("SOS"), driverId: driverProfile.id, createdAt: new Date().toISOString(), status: "Sent" };
   operations.emergencyAlerts.unshift(saved);

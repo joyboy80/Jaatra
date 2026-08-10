@@ -1,5 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import VerifyOtpPage from "./pages/auth/VerifyOtpPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AnalyticsPage from "./pages/admin/AnalyticsPage";
 import AIInsightsPage from "./pages/admin/AIInsightsPage";
@@ -38,12 +42,17 @@ import SettingsPage from "./pages/shared/SettingsPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleBasedRoute from "./routes/RoleBasedRoute";
 import { ROLES } from "./utils/roles";
+import { backendEnabled } from "./services/api";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={backendEnabled ? <RegisterPage /> : <Navigate to="/login" replace />} />
+      <Route path="/verify-otp" element={backendEnabled ? <VerifyOtpPage /> : <Navigate to="/login" replace />} />
+      <Route path="/forgot-password" element={backendEnabled ? <ForgotPasswordPage /> : <Navigate to="/login" replace />} />
+      <Route path="/reset-password" element={backendEnabled ? <ResetPasswordPage /> : <Navigate to="/login" replace />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.STUDENT]} />}>

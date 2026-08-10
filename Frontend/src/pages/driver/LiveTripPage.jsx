@@ -11,7 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 import useLiveTracking from "../../hooks/useLiveTracking";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { getCurrentTrip, getTripSummary, updateTripStatus } from "../../services/driverService";
-import { setLiveBusStatus } from "../../services/trackingService";
+import { publishDriverLocation, setLiveBusStatus } from "../../services/trackingService";
 
 export default function LiveTripPage() {
   const { setToast } = useAuth();
@@ -21,7 +21,7 @@ export default function LiveTripPage() {
 
   async function load() {
     const trip = await getCurrentTrip();
-    setSummary(await getTripSummary(trip.id));
+    setSummary(trip ? await getTripSummary(trip.id) : { trip: null, passengerCount: 0, boarded: 0, waiting: 0 });
   }
 
   useEffect(() => { load(); }, []);
@@ -36,6 +36,24 @@ export default function LiveTripPage() {
 
   const trip = summary?.trip;
   const liveBus = buses.find((bus) => bus.id === trip?.busId);
+
+  useEffect(() => {
+    if (trip?.status !== "In Progress" || !navigator.geolocation) return undefined;
+    const watchId = navigator.geolocation.watchPosition((position) => {
+      publishDriverLocation({
+        tripId: trip.id,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        speed: Math.max(0, (position.coords.speed || 0) * 3.6),
+        locationLabel: "Live GPS position",
+        nextStop: trip.nextStop,
+        etaMinutes: Number.parseInt(trip.eta, 10) || 0,
+        status: "Running",
+        progress: 0,
+      }).catch(() => undefined);
+    }, () => undefined, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [trip?.eta, trip?.id, trip?.nextStop, trip?.status]);
 
   return (
     <DashboardLayout>

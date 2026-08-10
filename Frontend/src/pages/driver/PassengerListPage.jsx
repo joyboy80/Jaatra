@@ -34,7 +34,7 @@ export default function PassengerListPage() {
     async function loadTrips() {
       const [assignedTrips, currentTrip] = await Promise.all([getAssignedTrips(), getCurrentTrip()]);
       setTrips(assignedTrips);
-      setTripId(currentTrip.id);
+      setTripId(currentTrip?.id || "");
     }
 
     loadTrips();

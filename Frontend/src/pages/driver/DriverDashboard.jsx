@@ -24,7 +24,7 @@ export default function DriverDashboard() {
 
   async function loadDashboard() {
     const trip = await getCurrentTrip();
-    setSummary(await getTripSummary(trip.id));
+    setSummary(trip ? await getTripSummary(trip.id) : { trip: null, passengerCount: 0, boarded: 0, waiting: 0, capacity: 0 });
   }
 
   useEffect(() => {

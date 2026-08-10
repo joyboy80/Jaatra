@@ -1,4 +1,5 @@
 import { buses } from "../data/buses.js";
+import { apiRequest, backendEnabled } from "./api.js";
 
 const listeners = new Set();
 let timer = null;
@@ -86,6 +87,26 @@ function stopSimulator() {
 }
 
 export function subscribeToTracking(listener) {
+  if (backendEnabled) {
+    let active = true;
+    const poll = async () => {
+      try {
+        const data = (await apiRequest("/transport/tracking")).buses;
+        if (active) {
+          liveBuses = data;
+          listener(snapshot());
+        }
+      } catch (_error) {
+        // Keep the last confirmed snapshot while the connection recovers.
+      }
+    };
+    poll();
+    const pollTimer = typeof window !== "undefined" ? window.setInterval(poll, 5000) : null;
+    return () => {
+      active = false;
+      if (pollTimer) window.clearInterval(pollTimer);
+    };
+  }
   listeners.add(listener);
   listener(snapshot());
   startSimulator();
@@ -100,14 +121,24 @@ export function getTrackingSnapshot() {
 }
 
 export async function getLiveLocations() {
+  if (backendEnabled) {
+    liveBuses = (await apiRequest("/transport/tracking")).buses;
+    return snapshot();
+  }
   return snapshot();
 }
 
 export async function getLiveBus(busId) {
+  if (backendEnabled) return (await apiRequest(`/transport/tracking/${encodeURIComponent(busId)}`)).bus;
   return snapshot().find((bus) => bus.id === busId) || null;
 }
 
 export function setLiveBusStatus(busId, status, delayMinutes = 0) {
   liveBuses = liveBuses.map((bus) => bus.id === busId ? { ...bus, status, delayMinutes, updatedAt: new Date().toISOString() } : bus);
   emit();
+}
+
+export async function publishDriverLocation(location) {
+  if (!backendEnabled) return null;
+  return (await apiRequest("/driver/transport/location", { method: "PUT", body: location })).location;
 }

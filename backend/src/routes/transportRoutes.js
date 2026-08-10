@@ -1,0 +1,31 @@
+import { Router } from "express";
+import {
+  bus, buses, createReservation, notifications, readAllNotifications, readNotification, removeNotifications,
+  removeReservation, reservations, routes, seats, serviceStatus, ticket, tickets, tracking, trackingBus, trips,
+} from "../controllers/transportController.js";
+import authMiddleware from "../middleware/authMiddleware.js";
+import requireRole from "../middleware/requireRole.js";
+import { ROLES } from "../validators/authValidator.js";
+
+const router = Router();
+router.use(authMiddleware);
+router.get("/buses", buses);
+router.get("/buses/:id", bus);
+router.get("/routes", routes);
+router.get("/trips", trips);
+router.get("/tracking", tracking);
+router.get("/tracking/:id", trackingBus);
+router.get("/status", serviceStatus);
+router.get("/notifications", notifications);
+router.patch("/notifications/read-all", readAllNotifications);
+router.patch("/notifications/:id/read", readNotification);
+router.delete("/notifications", removeNotifications);
+router.use(requireRole(ROLES.STUDENT, ROLES.TEACHER, ROLES.STAFF));
+router.get("/reservations", reservations);
+router.get("/reservations/seats", seats);
+router.post("/reservations", createReservation);
+router.delete("/reservations/:id", removeReservation);
+router.get("/tickets", tickets);
+router.get("/tickets/:id", ticket);
+
+export default router;

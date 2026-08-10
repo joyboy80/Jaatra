@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Modal from "../components/common/Modal";
 import Toast from "../components/common/Toast";
+import { backendEnabled } from "../services/api";
 import MobileMenu from "../components/layout/MobileMenu";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
@@ -14,8 +15,8 @@ export default function DashboardLayout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
-  function confirmLogout() {
-    logout();
+  async function confirmLogout() {
+    await logout();
     setLogoutOpen(false);
     navigate("/login", { replace: true });
   }
@@ -41,7 +42,7 @@ export default function DashboardLayout({ children }) {
       <Modal
         open={logoutOpen}
         title="Log out of Jaatra?"
-        description="Your current mock session will be cleared and you will return to the login screen."
+        description={backendEnabled ? "Your secure server session will be ended and you will return to the login screen." : "Your current mock session will be cleared and you will return to the login screen."}
         confirmLabel="Logout"
         danger
         onClose={() => setLogoutOpen(false)}

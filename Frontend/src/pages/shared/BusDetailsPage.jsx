@@ -1,14 +1,23 @@
 import { BusFront, Clock, MapPinned, Navigation, Ticket, Users } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Badge from "../../components/common/Badge";
 import StatCard from "../../components/common/StatCard";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
-import { getBusForRole } from "../../utils/busAccess";
+import { getBusByRole } from "../../services/busService";
+import Loading from "../../components/common/Loading";
 
 export default function BusDetailsPage({ role }) {
   const { id } = useParams();
-  const bus = getBusForRole(role, id);
+  const [bus, setBus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setLoading(true);
+    getBusByRole(role, id).then(setBus).finally(() => setLoading(false));
+  }, [id, role]);
+
+  if (loading) return <DashboardLayout><Loading label="Loading bus details" /></DashboardLayout>;
 
   if (!bus) {
     return <Navigate to={`/${role}/today-buses`} replace />;

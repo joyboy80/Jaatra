@@ -1,4 +1,5 @@
 import { notifications as notificationDefaults } from "../data/notifications.js";
+import { apiRequest, backendEnabled } from "./api.js";
 
 const STORAGE_PREFIX = "jaatra.notifications";
 const subscribers = new Map();
@@ -50,10 +51,12 @@ function preferredBus(userId, role) {
 }
 
 export async function getNotifications(userId, role) {
+  if (backendEnabled) return (await apiRequest("/transport/notifications")).notifications;
   return readNotifications(userId, role);
 }
 
 export function createNotification(userId, role, input) {
+  if (backendEnabled) return null;
   if (!userId) return null;
   const notification = {
     id: `NTF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`,
@@ -72,14 +75,17 @@ export function createNotification(userId, role, input) {
 }
 
 export async function markNotificationRead(userId, role, notificationId) {
+  if (backendEnabled) return (await apiRequest(`/transport/notifications/${encodeURIComponent(notificationId)}/read`, { method: "PATCH" })).notifications;
   return publish(userId, role, readNotifications(userId, role).map((item) => item.id === notificationId ? { ...item, unread: false } : item));
 }
 
 export async function markAllNotificationsRead(userId, role) {
+  if (backendEnabled) return (await apiRequest("/transport/notifications/read-all", { method: "PATCH" })).notifications;
   return publish(userId, role, readNotifications(userId, role).map((item) => ({ ...item, unread: false })));
 }
 
 export async function clearNotifications(userId, role) {
+  if (backendEnabled) return (await apiRequest("/transport/notifications", { method: "DELETE" })).notifications;
   return publish(userId, role, []);
 }
 
@@ -96,6 +102,23 @@ function simulateNotification(userId, role) {
 }
 
 export function subscribeToNotifications({ userId, role }, listener) {
+  if (backendEnabled) {
+    let active = true;
+    const poll = async () => {
+      try {
+        const data = await getNotifications(userId, role);
+        if (active) listener(data);
+      } catch (_error) {
+        // Polling resumes automatically after temporary network failures.
+      }
+    };
+    poll();
+    const timer = typeof window !== "undefined" ? window.setInterval(poll, 10000) : null;
+    return () => {
+      active = false;
+      if (timer) window.clearInterval(timer);
+    };
+  }
   if (!subscribers.has(userId)) subscribers.set(userId, new Set());
   subscribers.get(userId).add(listener);
   listener(readNotifications(userId, role));

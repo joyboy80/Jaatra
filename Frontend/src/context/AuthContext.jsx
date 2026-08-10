@@ -1,17 +1,45 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import * as authService from "../services/authService";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [auth, setAuth] = useState(() => authService.getStoredAuth());
+  const [auth, setAuth] = useState(null);
+  const [isRestoring, setIsRestoring] = useState(true);
   const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    authService.restoreSession()
+      .then((restored) => {
+        if (active) setAuth(restored);
+      })
+      .catch(() => {
+        if (active) setAuth(null);
+      })
+      .finally(() => {
+        if (active) setIsRestoring(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const expire = () => {
+      setAuth(null);
+      setToast({ type: "info", message: "Your session expired. Please sign in again." });
+    };
+    window.addEventListener("jaatra:session-expired", expire);
+    return () => window.removeEventListener("jaatra:session-expired", expire);
+  }, []);
 
   const value = useMemo(
     () => ({
       user: auth?.user || null,
-      token: auth?.token || null,
-      isAuthenticated: Boolean(auth?.token),
+      token: null,
+      isAuthenticated: Boolean(auth?.user),
+      isRestoring,
       toast,
       setToast,
       async login(credentials) {
@@ -20,13 +48,16 @@ export function AuthProvider({ children }) {
         setToast({ type: "success", message: `Welcome to Jaatra, ${nextAuth.user.roleLabel}.` });
         return nextAuth;
       },
-      logout() {
-        authService.logout();
-        setAuth(null);
-        setToast({ type: "info", message: "You have been signed out." });
+      async logout() {
+        try {
+          await authService.logout();
+        } finally {
+          setAuth(null);
+          setToast({ type: "info", message: "You have been signed out." });
+        }
       },
     }),
-    [auth, toast]
+    [auth, isRestoring, toast]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

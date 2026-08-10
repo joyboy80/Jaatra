@@ -9,7 +9,7 @@ import { useAuth } from "../../context/AuthContext";
 import useLiveTracking from "../../hooks/useLiveTracking";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { getReservations } from "../../services/reservationService";
-import { getBusesForRole } from "../../utils/busAccess";
+import { getBusesByRole } from "../../services/busService";
 import { toDateInputValue } from "../../utils/date";
 
 export default function LiveTrackingPage({ role }) {
@@ -17,7 +17,8 @@ export default function LiveTrackingPage({ role }) {
   const { buses, connectionStatus } = useLiveTracking();
   const [selectedId, setSelectedId] = useState("");
   const [reservedBusId, setReservedBusId] = useState("");
-  const allowedIds = useMemo(() => new Set(getBusesForRole(role).map((bus) => bus.id)), [role]);
+  const [allowedIds, setAllowedIds] = useState(new Set());
+  useEffect(() => { getBusesByRole(role).then((items) => setAllowedIds(new Set(items.map((bus) => bus.id)))); }, [role]);
   const roleBuses = useMemo(() => buses.filter((bus) => allowedIds.has(bus.id)), [allowedIds, buses]);
 
   useEffect(() => {

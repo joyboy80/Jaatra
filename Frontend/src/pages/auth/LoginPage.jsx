@@ -5,16 +5,18 @@ import Button from "../../components/common/Button";
 import Logo from "../../components/common/Logo";
 import Toast from "../../components/common/Toast";
 import ThemeToggle from "../../components/common/ThemeToggle";
+import Loading from "../../components/common/Loading";
 import { useAuth } from "../../context/AuthContext";
 import { getDashboardForRole, roleOptions } from "../../utils/roles";
+import { backendEnabled } from "../../services/api";
 
 export default function LoginPage() {
-  const { isAuthenticated, login, user, setToast } = useAuth();
+  const { isAuthenticated, isRestoring, login, user, setToast } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({
-    identifier: "student@university.edu",
-    password: "jaatra123",
+    identifier: backendEnabled ? "" : "student@university.edu",
+    password: backendEnabled ? "" : "jaatra123",
     role: "student",
     remember: true,
   });
@@ -26,6 +28,10 @@ export default function LoginPage() {
     if (!user) return "/login";
     return location.state?.from?.pathname || getDashboardForRole(user.role);
   }, [location.state, user]);
+
+  if (isRestoring) {
+    return <main className="min-h-screen bg-slate-50 p-4"><Loading label="Restoring your session" /></main>;
+  }
 
   if (isAuthenticated && user) {
     return <Navigate to={destination} replace />;
@@ -129,6 +135,12 @@ export default function LoginPage() {
                 <p className="mt-2 text-sm leading-6 text-jaatra-gray">Access your university transportation workspace.</p>
               </div>
 
+              {location.state?.message && (
+                <div className="mt-5 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
+                  {location.state.message}
+                </div>
+              )}
+
               {errors.form && (
                 <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-100">
                   {errors.form}
@@ -137,7 +149,7 @@ export default function LoginPage() {
 
               <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
                 <label className="block">
-                  <span className="text-sm font-semibold text-jaatra-ink">Email / University ID</span>
+                  <span className="text-sm font-semibold text-jaatra-ink">{backendEnabled ? "CUET email" : "Email / University ID"}</span>
                   <span className="relative mt-2 block">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-jaatra-gray" />
                     <input
@@ -179,7 +191,7 @@ export default function LoginPage() {
                   {errors.password && <span className="mt-1 block text-xs font-medium text-red-600">{errors.password}</span>}
                 </label>
 
-                <label className="block">
+                {!backendEnabled && <label className="block">
                   <span className="text-sm font-semibold text-jaatra-ink">Role</span>
                   <select
                     className="focus-ring mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-jaatra-ink shadow-sm transition hover:border-jaatra-teal/40"
@@ -193,7 +205,7 @@ export default function LoginPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </label>}
 
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <label className="flex items-center gap-2 font-medium text-jaatra-gray">
@@ -206,7 +218,7 @@ export default function LoginPage() {
                     />
                     Remember me
                   </label>
-                  <Link className="focus-ring rounded-lg font-semibold text-jaatra-teal hover:text-jaatra-navy" to="/login">
+                  <Link className="focus-ring rounded-lg font-semibold text-jaatra-teal hover:text-jaatra-navy" to={backendEnabled ? "/forgot-password" : "/login"}>
                     Forgot password?
                   </Link>
                 </div>
@@ -215,6 +227,8 @@ export default function LoginPage() {
                   Sign in
                 </Button>
               </form>
+              {backendEnabled && <p className="mt-5 text-center text-sm text-jaatra-gray">Need an account? <Link className="font-semibold text-jaatra-teal" to="/register">Register with CUET</Link></p>}
+              {!backendEnabled && <p className="mt-5 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-800">Demo mode: the selected role controls the mock portal.</p>}
               <div className="mt-6 border-t border-slate-100 pt-5"><ThemeToggle /></div>
             </div>
           </div>

@@ -1,11 +1,12 @@
 import { ArrowRight, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Badge from "../../components/common/Badge";
 import EmptyState from "../../components/common/EmptyState";
 import Select from "../../components/common/Select";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
-import { getBusesForRole, parseDepartureMinutes, uniqueValues } from "../../utils/busAccess";
+import { parseDepartureMinutes, uniqueValues } from "../../utils/busAccess";
+import { getBusesByRole } from "../../services/busService";
 
 function travelTime(bus) {
   const minutes = parseDepartureMinutes(bus.arrivalTime) - parseDepartureMinutes(bus.departureTime);
@@ -13,7 +14,8 @@ function travelTime(bus) {
 }
 
 export default function RouteExplorerPage({ role }) {
-  const buses = getBusesForRole(role);
+  const [buses, setBuses] = useState([]);
+  useEffect(() => { getBusesByRole(role).then(setBuses); }, [role]);
   const stops = uniqueValues(buses.flatMap((bus) => bus.stops));
   const [query, setQuery] = useState("");
   const [start, setStart] = useState("all");

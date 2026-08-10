@@ -1,12 +1,13 @@
 import { CalendarDays, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import PortalBusCard from "../../components/bus/PortalBusCard";
 import Select from "../../components/common/Select";
 import Badge from "../../components/common/Badge";
 import EmptyState from "../../components/common/EmptyState";
-import { getAllowedBusCategories, getBusesForRole, parseDepartureMinutes, uniqueValues } from "../../utils/busAccess";
+import { getAllowedBusCategories, parseDepartureMinutes, uniqueValues } from "../../utils/busAccess";
+import { getBusesByRole } from "../../services/busService";
 
 function todayLabel() {
   return new Intl.DateTimeFormat("en-US", {
@@ -18,7 +19,8 @@ function todayLabel() {
 }
 
 export default function TodayBusesPage({ role }) {
-  const buses = getBusesForRole(role);
+  const [buses, setBuses] = useState([]);
+  useEffect(() => { getBusesByRole(role).then(setBuses); }, [role]);
   const [query, setQuery] = useState("");
   const [destination, setDestination] = useState("all");
   const [category, setCategory] = useState("all");
