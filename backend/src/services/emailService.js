@@ -30,7 +30,7 @@ export async function verifyEmailTransport({ requireConfigured = false } = {}) {
     await getTransporter().verify();
     return { configured: true, verified: true };
   } catch (error) {
-    console.error("[JAATRA email] SMTP verification failed", {
+    console.error("[SAFAR email] SMTP verification failed", {
       code: error?.code,
       command: error?.command,
       responseCode: error?.responseCode,
@@ -41,7 +41,7 @@ export async function verifyEmailTransport({ requireConfigured = false } = {}) {
 
 export async function sendRegistrationOtp(email, otp) {
   const text = [
-    "JAATRA",
+    "SAFAR",
     "University Transportation System",
     "",
     "Your verification code is:",
@@ -56,7 +56,7 @@ export async function sendRegistrationOtp(email, otp) {
   <html><body style="margin:0;background:#f4f7f6;font-family:Arial,sans-serif;color:#18332c">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:32px 16px">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden">
-        <tr><td style="padding:24px 32px;background:#075e54;color:#fff"><strong style="font-size:26px">JAATRA</strong><br><span>University Transportation System</span></td></tr>
+        <tr><td style="padding:24px 32px;background:#075e54;color:#fff"><strong style="font-size:26px">SAFAR</strong><br><span>University Transportation System</span></td></tr>
         <tr><td style="padding:32px;text-align:center"><p>Your verification code is:</p><div style="font-size:36px;font-weight:700;letter-spacing:10px;margin:22px 0">${otp}</div><p>This code expires in ${env.otpExpiresMinutes} minutes.</p><p style="color:#687773;font-size:14px">If you did not request this verification code, please ignore this email.</p></td></tr>
       </table>
     </td></tr></table>
@@ -66,7 +66,7 @@ export async function sendRegistrationOtp(email, otp) {
     if (env.nodeEnv === "production") {
       throw new AppError(500, "SMTP is not configured.", "SMTP_NOT_CONFIGURED");
     }
-    console.info(`[JAATRA development OTP] ${email}: ${otp} (expires in ${env.otpExpiresMinutes} minutes)`);
+    console.info(`[SAFAR development OTP] ${email}: ${otp} (expires in ${env.otpExpiresMinutes} minutes)`);
     return { delivered: false, delivery: "DEVELOPMENT_CONSOLE" };
   }
 
@@ -74,17 +74,19 @@ export async function sendRegistrationOtp(email, otp) {
     const info = await getTransporter().sendMail({
       from: env.smtpFrom,
       to: email,
-      subject: "Your JAATRA verification code",
+      subject: "Your SAFAR verification code",
       text,
       html,
     });
+    console.log(info);
     return { delivered: true, delivery: "EMAIL", messageId: info.messageId };
   } catch (error) {
-    console.error("[JAATRA email] OTP delivery failed", {
+    console.error("[SAFAR email] OTP delivery failed", {
       code: error?.code,
       command: error?.command,
       responseCode: error?.responseCode,
     });
+    console.log('OTP Delivery failed');
     throw new AppError(502, "The verification email could not be delivered. Please try again.", "EMAIL_DELIVERY_FAILED");
   }
 }

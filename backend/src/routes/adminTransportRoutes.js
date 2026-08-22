@@ -1,8 +1,9 @@
 import { Router } from "express";
 import {
-  getAdminBuses, getAdminDrivers, getAdminReservations, getAdminRoutes, getAdminSchedules, getAdminUsers,
+  getAdminAssignments, getAdminBuses, getAdminDrivers, getAdminReservations, getAdminRoutes, getAdminSchedules, getAdminUsers,
   getAlerts, getAnalytics, getMaintenance, getOverview, putAdminBus, putAdminDriver, putAdminRoute,
-  putAdminSchedule, putAdminUser, putMaintenance, removeAdminBus, removeAdminRoute, removeAdminSchedule,
+  putAdminAssignment, putAdminSchedule, putAdminUser, putMaintenance, removeAdminAssignment, removeAdminBus, removeAdminRoute, removeAdminSchedule,
+  getPredictionsOccupancy, getPredictionsInsights, getRecommendationsAllocations
 } from "../controllers/transportController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import requireRole from "../middleware/requireRole.js";
@@ -19,6 +20,9 @@ router.delete("/routes/:id", removeAdminRoute);
 router.get("/schedules", getAdminSchedules);
 router.put("/schedules", putAdminSchedule);
 router.delete("/schedules/:id", removeAdminSchedule);
+router.get("/assignments", getAdminAssignments);
+router.put("/assignments", putAdminAssignment);
+router.delete("/assignments/:id", removeAdminAssignment);
 router.get("/reservations", getAdminReservations);
 router.get("/users", getAdminUsers);
 router.put("/users/:id", putAdminUser);
@@ -29,5 +33,9 @@ router.put("/maintenance/:id", putMaintenance);
 router.get("/alerts", getAlerts);
 router.get("/overview", getOverview);
 router.get("/analytics", getAnalytics);
+
+router.get("/predictions/occupancy", getPredictionsOccupancy);
+router.get("/predictions/insights", getPredictionsInsights);
+router.get("/recommendations/allocations", getRecommendationsAllocations);
 
 export default router;

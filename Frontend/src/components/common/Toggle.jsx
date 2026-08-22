@@ -2,7 +2,7 @@ export default function Toggle({ checked, onChange, label }) {
   return (
     <button
       type="button"
-      className={`focus-ring relative h-7 w-12 shrink-0 rounded-full transition ${checked ? "bg-jaatra-teal" : "bg-slate-300"}`}
+      className={`focus-ring relative h-7 w-12 shrink-0 rounded-full transition ${checked ? "bg-safar-teal" : "bg-slate-300"}`}
       role="switch"
       aria-checked={checked}
       aria-label={label}

@@ -15,8 +15,30 @@ const ROLE_LABELS = {
   TRANSPORT_ADMIN: "Transport Authority",
 };
 
+export const SHIFT_DEFINITIONS = {
+  MORNING: { outbound: { route: "CUET to Station", departureTime: "05:45 AM" }, return: { route: "Station to CUET", departureTime: "07:10 AM" } },
+  NOON: { outbound: { route: "CUET to Kaptai Rastar Matha", departureTime: "01:30 PM" }, return: { route: "Kaptai Rastar Matha to CUET", departureTime: "02:15 PM" } },
+  AFTERNOON: { outbound: { route: "CUET to Station", departureTime: "04:15 PM" }, return: { route: "Station to CUET", departureTime: "08:45 PM" } },
+};
+const PASSENGER_GROUPS = ["ALL_STUDENTS", "FEMALE_STUDENTS", "ALL_TEACHERS", "ALL_STAFF", "ALL_USERS"];
+const GROUP_LABELS = { ALL_STUDENTS: "All Students", FEMALE_STUDENTS: "Female Students", ALL_TEACHERS: "All Teachers", ALL_STAFF: "All Staff", ALL_USERS: "All Passengers" };
+
+function eligibleGroups(user) {
+  if (user?.userType === "STUDENT") return user.gender === "FEMALE" ? ["ALL_STUDENTS", "FEMALE_STUDENTS", "ALL_USERS"] : ["ALL_STUDENTS", "ALL_USERS"];
+  if (user?.userType === "TEACHER") return ["ALL_TEACHERS", "ALL_USERS"];
+  if (user?.userType === "STAFF") return ["ALL_STAFF", "ALL_USERS"];
+  return [];
+}
+
 function transportError(error, operation, code = "TRANSPORT_ERROR") {
+  if (["42P01", "42703", "PGRST205", "PGRST204"].includes(error?.code)) {
+    return new AppError(503, "Daily assignments are not available in Supabase yet. Apply migrations 004_daily_shift_assignments.sql and 005_driver_access_without_approval.sql, then reload the schema.", "ASSIGNMENT_SCHEMA_OUTDATED");
+  }
+  if (error?.message === "TICKET_LIMIT_REACHED" || (error?.code === "23505" && error?.message?.includes("reservations_one_ticket_per_departure_idx"))) {
+    return new AppError(409, "You have already booked a ticket for this departure.", "TICKET_LIMIT_REACHED");
+  }
   if (error?.code === "23505") return new AppError(409, "That seat or unique transport value is already in use.", "TRANSPORT_CONFLICT");
+  if (error?.code === "23P01") return new AppError(409, error.message || "The selected Driver or bus already has an overlapping assignment.", "ASSIGNMENT_CONFLICT");
   if (error?.code === "23503") return new AppError(409, "This record is still referenced by active transport data.", "TRANSPORT_IN_USE");
   if (error?.code === "42501") return new AppError(403, error.message || "Transport access is forbidden.", "TRANSPORT_FORBIDDEN");
   if (["22000", "22007"].includes(error?.code)) return new AppError(409, error.message || "Transport state conflict.", "TRANSPORT_STATE_CONFLICT");
@@ -35,6 +57,16 @@ function serviceDate() {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+export function scheduleDate(value) {
+  if (value === undefined || value === null || value === "") return serviceDate();
+  const date = String(value);
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw new AppError(400, "Service date is invalid.", "INVALID_SERVICE_DATE");
+  }
+  return date;
 }
 
 function value(object, snake, camel = snake) {
@@ -81,6 +113,14 @@ export function serializeTrip(row) {
     arrivalTime: row.arrival_time,
     status: row.status,
     driver: bus?.assigned_driver_name,
+    assignmentId: row.assignment_id,
+    serviceDate: row.service_date,
+    shift: row.shift,
+    passengerGroup: row.passenger_group,
+    passengerGroupLabel: GROUP_LABELS[row.passenger_group],
+    direction: row.direction,
+    reservationStatus: row.reservation_status,
+    operationalStatus: row.operational_status,
   };
 }
 
@@ -114,6 +154,7 @@ export function serializeReservation(row) {
 
 function serializeTicket(row) {
   const reservation = Array.isArray(row.reservations) ? row.reservations[0] : row.reservations;
+  const invoice = reservation ? (Array.isArray(reservation.invoices) ? reservation.invoices[0] : reservation.invoices) : null;
   return {
     ...serializeReservation(reservation),
     id: row.id,
@@ -121,6 +162,18 @@ function serializeTicket(row) {
     status: row.status,
     qrPayload: row.qr_payload,
     usedAt: row.used_at,
+    invoice: invoice ? {
+      id: invoice.id,
+      invoiceNumber: invoice.invoice_number,
+      issueDate: invoice.issue_date,
+      subtotal: invoice.subtotal,
+      tax: invoice.tax,
+      fees: invoice.fees,
+      discount: invoice.discount,
+      total: invoice.total,
+      currency: invoice.currency,
+      paymentStatus: invoice.payment_status
+    } : null
   };
 }
 
@@ -139,21 +192,27 @@ function serializeNotification(row, user) {
   };
 }
 
-async function reservationCounts() {
+async function reservationCounts(date = serviceDate()) {
   const { data, error } = await getSupabaseAdmin().from("reservations").select("bus_id")
-    .eq("travel_date", serviceDate()).neq("status", "Cancelled");
+    .eq("travel_date", date).neq("status", "Cancelled");
   if (error) throw transportError(error, "count active reservations");
   return (data || []).reduce((counts, item) => counts.set(item.bus_id, (counts.get(item.bus_id) || 0) + 1), new Map());
 }
 
-export async function listBuses(userType, busId) {
-  let query = getSupabaseAdmin().from("buses").select("*").order("id");
-  const categories = CATEGORY_BY_ROLE[userType];
-  if (categories) query = query.in("category", categories);
-  if (busId) query = query.eq("id", busId);
-  const [{ data, error }, counts] = await Promise.all([query, reservationCounts()]);
+export async function listBuses(user, busId, date) {
+  const targetDate = scheduleDate(date);
+  const groups = eligibleGroups(user);
+  if (!groups.length) return busId ? null : [];
+  let query = getSupabaseAdmin().from("transport_assignments").select("*, buses(*), transport_trips(*)")
+    .eq("service_date", targetDate).eq("status", "ACTIVE").in("passenger_group", groups).order("shift");
+  if (busId) query = query.eq("bus_id", busId);
+  const [{ data, error }, counts] = await Promise.all([query, reservationCounts(targetDate)]);
   if (error) throw transportError(error, "read buses");
-  const buses = (data || []).map((bus) => serializeBus(bus, counts.get(bus.id) || 0));
+  const buses = (data || []).map((assignment) => {
+    const bus = assignment.buses;
+    const outbound = (assignment.transport_trips || []).find((trip) => trip.direction === "OUTBOUND") || assignment.transport_trips?.[0];
+    return { ...serializeBus(bus, counts.get(bus.id) || 0), route: outbound?.route || bus.route, departureTime: outbound?.departure_time || bus.departure_time, assignmentId: assignment.id, shift: assignment.shift, passengerGroup: assignment.passenger_group, passengerGroupLabel: GROUP_LABELS[assignment.passenger_group] };
+  });
   return busId ? buses[0] || null : buses;
 }
 
@@ -171,11 +230,14 @@ export async function listRoutes() {
   }));
 }
 
-export async function listTrips(userType) {
-  const { data, error } = await getSupabaseAdmin().from("transport_trips").select("*, buses(*)").order("id");
+export async function listTrips(user, date) {
+  const targetDate = scheduleDate(date);
+  const groups = eligibleGroups(user);
+  if (!groups.length) return [];
+  const { data, error } = await getSupabaseAdmin().from("transport_trips").select("*, buses(*), transport_assignments!inner(status)")
+    .eq("service_date", targetDate).eq("transport_assignments.status", "ACTIVE").in("passenger_group", groups).order("departure_time");
   if (error) throw transportError(error, "read trips");
-  const categories = CATEGORY_BY_ROLE[userType];
-  return (data || []).filter((row) => !categories || categories.includes(row.buses?.category)).map(serializeTrip);
+  return (data || []).map(serializeTrip);
 }
 
 export async function listReservations(profileId, { all = false } = {}) {
@@ -186,7 +248,9 @@ export async function listReservations(profileId, { all = false } = {}) {
   return (data || []).map(serializeReservation);
 }
 
-export async function reservedSeats(tripId, travelDate) {
+export async function reservedSeats(user, tripId, travelDate) {
+  const trip = (await listTrips(user, travelDate)).find((item) => item.id === tripId && item.serviceDate === travelDate);
+  if (!trip) throw new AppError(403, "This trip is unavailable to your profile.", "TRIP_FORBIDDEN");
   const { data, error } = await getSupabaseAdmin().from("reservations").select("seat_number")
     .eq("trip_id", tripId).eq("travel_date", travelDate).neq("status", "Cancelled");
   if (error) throw transportError(error, "read reserved seats");
@@ -223,28 +287,36 @@ export async function cancelReservation(profileId, bookingId) {
   return serializeReservation(data);
 }
 
-export async function listTickets(profileId) {
-  const { data, error } = await getSupabaseAdmin().from("tickets").select("*, reservations(*)")
-    .eq("profile_id", profileId).order("created_at", { ascending: false });
+function ticketIsEligible(row, user) {
+  const reservation = Array.isArray(row.reservations) ? row.reservations[0] : row.reservations;
+  const trip = reservation?.transport_trips;
+  const assignment = trip?.transport_assignments;
+  return !assignment || (assignment.status === "ACTIVE" && eligibleGroups(user).includes(assignment.passenger_group));
+}
+
+export async function listTickets(user) {
+  const { data, error } = await getSupabaseAdmin().from("tickets").select("*, reservations(*, transport_trips(*, transport_assignments(*)), invoices(*))")
+    .eq("profile_id", user.profileId).order("created_at", { ascending: false });
   if (error) throw transportError(error, "read tickets");
-  return (data || []).map(serializeTicket);
+  return (data || []).filter((row) => ticketIsEligible(row, user)).map(serializeTicket);
 }
 
-export async function getTicket(profileId, ticketId) {
-  const { data, error } = await getSupabaseAdmin().from("tickets").select("*, reservations(*)")
-    .eq("profile_id", profileId).eq("id", ticketId).maybeSingle();
+export async function getTicket(user, ticketId) {
+  const { data, error } = await getSupabaseAdmin().from("tickets").select("*, reservations(*, transport_trips(*, transport_assignments(*)), invoices(*))")
+    .eq("profile_id", user.profileId).eq("id", ticketId).maybeSingle();
   if (error) throw transportError(error, "read ticket");
-  return data ? serializeTicket(data) : null;
+  return data && ticketIsEligible(data, user) ? serializeTicket(data) : null;
 }
 
-export async function listTracking(userType, busId) {
-  const [{ data, error }, counts] = await Promise.all([
+export async function listTracking(user, busId) {
+  const [visibleBuses, { data, error }, counts] = await Promise.all([
+    user?.userType === "TRANSPORT_ADMIN" ? adminBuses() : listBuses(user),
     getSupabaseAdmin().from("tracking_positions").select("*, buses(*)").order("bus_id"),
     reservationCounts(),
   ]);
   if (error) throw transportError(error, "read live tracking");
-  const categories = CATEGORY_BY_ROLE[userType];
-  const rows = (data || []).filter((row) => (!busId || row.bus_id === busId) && (!categories || categories.includes(row.buses?.category)));
+  const visibleIds = new Set(visibleBuses.map((bus) => bus.id));
+  const rows = (data || []).filter((row) => visibleIds.has(row.bus_id) && (!busId || row.bus_id === busId));
   return rows.map((row) => ({
     id: row.bus_id,
     name: row.buses?.name,
@@ -299,17 +371,15 @@ async function assignedBusForDriver(user) {
 }
 
 export async function driverTrips(user) {
-  const bus = await assignedBusForDriver(user);
-  if (!bus) return [];
-  const { data, error } = await getSupabaseAdmin().from("transport_trips").select("*, buses(*)").eq("bus_id", bus.id).order("departure_time");
+  const { data, error } = await getSupabaseAdmin().from("transport_trips").select("*, buses(*)").eq("driver_profile_id", user.profileId).eq("service_date", serviceDate()).order("departure_time");
   if (error) throw transportError(error, "read assigned trips");
   return (data || []).map((row, index) => ({
     ...serializeTrip(row),
-    date: serviceDate(),
+    date: row.service_date,
     status: ["Boarding", "In Progress", "Completed", "Cancelled"].includes(row.status) ? row.status : index === 0 ? "Boarding" : "Upcoming",
-    currentLocation: bus.location_label,
-    nextStop: bus.next_stop,
-    eta: `${bus.eta_minutes || 0} min`,
+    currentLocation: row.buses?.location_label,
+    nextStop: row.buses?.next_stop,
+    eta: `${row.buses?.eta_minutes || 0} min`,
   }));
 }
 
@@ -334,7 +404,8 @@ export async function tripSummary(user, tripId) {
 export async function updateDriverTrip(user, tripId, status) {
   const assigned = await driverTrips(user);
   if (!assigned.some((trip) => trip.id === tripId)) throw new AppError(403, "This trip is not assigned to the current Driver.", "TRIP_NOT_ASSIGNED");
-  const { data, error } = await getSupabaseAdmin().from("transport_trips").update({ status }).eq("id", tripId).select("*, buses(*)").single();
+  const operationalStatus = status === "In Progress" ? "IN_PROGRESS" : status.toUpperCase().replaceAll(" ", "_");
+  const { data, error } = await getSupabaseAdmin().from("transport_trips").update({ status, operational_status: operationalStatus, ...( ["Completed", "Cancelled"].includes(status) ? { reservation_status: "CLOSED" } : {}) }).eq("id", tripId).select("*, buses(*)").single();
   if (error) throw transportError(error, "update trip status");
   await getSupabaseAdmin().from("tracking_positions").update({
     status: status === "In Progress" ? "Running" : status,
@@ -365,9 +436,12 @@ export async function updateDriverLocation(user, input) {
 }
 
 export async function verifyDriverTicket(user, ticketId, tripId) {
+  let finalTicketId = ticketId.trim().toUpperCase();
+  if (!finalTicketId.startsWith("TKT-")) finalTicketId = `TKT-${finalTicketId}`;
+
   const { data, error } = await getSupabaseAdmin().rpc("verify_transport_ticket", {
     p_driver_profile_id: user.profileId,
-    p_ticket_id: ticketId.trim().toUpperCase(),
+    p_ticket_id: finalTicketId,
     p_trip_id: tripId,
   });
   if (error) throw transportError(error, "verify ticket");
@@ -395,21 +469,41 @@ export async function createDriverReport(user, reportType, input) {
   return { ...data.payload, id: data.id, driverId: user.profileId, createdAt: data.created_at, status: data.status };
 }
 
-export async function adminBuses() { return listBuses("TRANSPORT_ADMIN"); }
+export async function adminBuses() {
+  const [{ data, error }, counts] = await Promise.all([
+    getSupabaseAdmin().from("buses").select("*").order("name"),
+    reservationCounts(),
+  ]);
+  if (error) throw transportError(error, "read fleet buses");
+  return (data || []).map((bus) => serializeBus(bus, counts.get(bus.id) || 0));
+}
 
-function busInput(input, existing = {}) {
-  const routeParts = String(input.route || existing.route || "Campus - Destination").split(" - ");
+export function validateAdminBusInput(input, existing = {}) {
+  const name = String(input.name || existing.name || "").trim();
+  const number = String(input.number || existing.number || "").trim();
+  const category = String(input.type || existing.category || "").trim();
+  const route = String(input.route || existing.route || "").trim();
+  const capacity = Number(input.capacity ?? existing.capacity);
+  const allowedCategories = ["Student Bus", "Female Student Bus", "Teacher Bus", "Staff Bus"];
+  const allowedStatuses = ["On Time", "Boarding", "En Route", "Delayed", "Arrived", "Under Maintenance"];
+  if (!name || !number || !route) throw new AppError(400, "Bus name, number, and route are required.", "BUS_VALIDATION_ERROR");
+  if (!allowedCategories.includes(category)) throw new AppError(400, "Bus category is invalid.", "INVALID_BUS_CATEGORY");
+  if (!Number.isInteger(capacity) || capacity < 10 || capacity > 200) throw new AppError(400, "Bus capacity must be between 10 and 200.", "INVALID_BUS_CAPACITY");
+  const routeParts = route.split(" - ").map((item) => item.trim()).filter(Boolean);
+  if (routeParts.length < 2) throw new AppError(400, "Route must include a start and destination separated by a hyphen.", "INVALID_BUS_ROUTE");
+  const status = input.status || existing.status || "On Time";
+  if (!allowedStatuses.includes(status)) throw new AppError(400, "Bus status is invalid.", "INVALID_BUS_STATUS");
   return {
     id: input.id || existing.id || id("BUS"),
-    name: input.name,
-    number: input.number,
-    category: input.type,
-    capacity: Number(input.capacity),
-    route: input.route,
+    name,
+    number,
+    category,
+    capacity,
+    route,
     stops: input.stops?.length ? input.stops : existing.stops || routeParts,
     departure_time: input.departureTime || existing.departure_time || "07:30 AM",
     arrival_time: input.arrivalTime || existing.arrival_time || "08:20 AM",
-    status: input.status || existing.status || "On Time",
+    status,
     next_stop: input.nextStop || existing.next_stop || routeParts.at(-1),
     eta_minutes: Number.parseInt(input.eta || existing.eta_minutes || 10, 10),
     location_label: input.currentLocation?.label || existing.location_label || "Transport Yard",
@@ -421,8 +515,10 @@ function busInput(input, existing = {}) {
 
 export async function saveAdminBus(input) {
   const admin = getSupabaseAdmin();
-  const existing = input.id ? (await admin.from("buses").select("*").eq("id", input.id).maybeSingle()).data : null;
-  const row = busInput(input, existing || {});
+  const existingResult = input.id ? await admin.from("buses").select("*").eq("id", input.id).maybeSingle() : { data: null, error: null };
+  if (existingResult.error) throw transportError(existingResult.error, "read bus");
+  if (input.id && !existingResult.data) throw new AppError(404, "Bus not found.", "BUS_NOT_FOUND");
+  const row = validateAdminBusInput(input, existingResult.data || {});
   const { data, error } = await admin.from("buses").upsert(row).select("*").single();
   if (error) throw transportError(error, "save bus");
   await admin.from("tracking_positions").upsert({
@@ -490,6 +586,89 @@ export async function saveAdminSchedule(input) {
 export async function deleteAdminSchedule(scheduleId) {
   const { error } = await getSupabaseAdmin().from("transport_schedules").delete().eq("id", scheduleId);
   if (error) throw transportError(error, "delete schedule");
+  return true;
+}
+
+export function normalizeDriverEmail(value) {
+  const email = String(value || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError(400, "A valid Driver email is required.", "INVALID_DRIVER_EMAIL");
+  return email;
+}
+
+function assignmentInput(input) {
+  const serviceDateValue = String(input.serviceDate || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(serviceDateValue)) throw new AppError(400, "A valid service date is required.", "INVALID_SERVICE_DATE");
+  if (!SHIFT_DEFINITIONS[input.shift]) throw new AppError(400, "A valid daily shift is required.", "INVALID_SHIFT");
+  if (!PASSENGER_GROUPS.includes(input.passengerGroup)) throw new AppError(400, "A valid passenger group is required.", "INVALID_PASSENGER_GROUP");
+  if (!String(input.busName || "").trim() || !String(input.busNumber || "").trim()) throw new AppError(400, "Bus name and bus number are required.", "VALIDATION_ERROR");
+  return { serviceDate: serviceDateValue, shift: input.shift, passengerGroup: input.passengerGroup, busName: input.busName.trim(), busNumber: input.busNumber.trim(), driverEmail: normalizeDriverEmail(input.driverEmail), status: input.status || "ACTIVE" };
+}
+
+function assignmentStops(route) { return route.split(" to "); }
+function assignmentTrip(idValue, assignment, bus, driver, direction) {
+  const definition = SHIFT_DEFINITIONS[assignment.shift][direction === "OUTBOUND" ? "outbound" : "return"];
+  return { id: `${idValue}-${direction}`, assignment_id: idValue, bus_id: bus.id, driver_profile_id: driver.id, service_date: assignment.serviceDate, shift: assignment.shift, passenger_group: assignment.passengerGroup, direction, route: definition.route, stops: assignmentStops(definition.route), departure_time: definition.departureTime, arrival_time: definition.departureTime, status: "Scheduled", reservation_status: assignment.status === "ACTIVE" ? "OPEN" : "CLOSED", operational_status: assignment.status === "ACTIVE" ? "SCHEDULED" : assignment.status };
+}
+
+export function validateDriverForAssignment(driver) {
+  if (!driver) throw new AppError(404, "No registered account was found for this Driver email.", "DRIVER_EMAIL_NOT_FOUND");
+  if (driver.user_type !== "DRIVER") throw new AppError(400, "The registered email belongs to a non-Driver account.", "NOT_A_DRIVER");
+  if (!driver.is_verified) throw new AppError(409, "The Driver must verify their email before receiving an assignment.", "DRIVER_NOT_VERIFIED");
+  if (!driver.is_active) throw new AppError(409, "An inactive Driver cannot receive an assignment.", "DRIVER_INACTIVE");
+  return driver;
+}
+
+export async function adminAssignments() {
+  const { data, error } = await getSupabaseAdmin().from("transport_assignments").select("*, buses(*), profiles!transport_assignments_driver_profile_id_fkey(full_name,email), transport_trips(*)").order("service_date", { ascending: false }).order("shift");
+  if (error) throw transportError(error, "read assignments");
+  return (data || []).map((row) => ({ id: row.id, serviceDate: row.service_date, shift: row.shift, passengerGroup: row.passenger_group, passengerGroupLabel: GROUP_LABELS[row.passenger_group], status: row.status, busId: row.bus_id, busName: row.buses?.name, busNumber: row.buses?.number, driverEmail: row.profiles?.email, driverName: row.profiles?.full_name, trips: (row.transport_trips || []).map(serializeTrip) }));
+}
+
+export async function saveAdminAssignment(input) {
+  const assignment = assignmentInput(input); const admin = getSupabaseAdmin();
+  if (input.id) {
+    const { data: current, error: currentError } = await admin.from("transport_assignments").select("passenger_group").eq("id", input.id).maybeSingle();
+    if (currentError) throw transportError(currentError, "read assignment");
+    if (current && current.passenger_group !== assignment.passengerGroup) {
+      const { data: tripRows, error: tripLookupError } = await admin.from("transport_trips").select("id").eq("assignment_id", input.id);
+      if (tripLookupError) throw transportError(tripLookupError, "check assignment trips");
+      const { count, error: reservationError } = await admin.from("reservations").select("id", { count: "exact", head: true }).in("trip_id", (tripRows || []).map((row) => row.id)).neq("status", "Cancelled");
+      if (reservationError) throw transportError(reservationError, "check affected reservations");
+      if (count) throw new AppError(409, "Resolve affected active reservations before changing the passenger group.", "ASSIGNMENT_RESOLUTION_REQUIRED");
+    }
+  }
+  const { data: driver, error: driverError } = await admin.from("profiles").select("*").ilike("email", assignment.driverEmail).maybeSingle();
+  if (driverError) throw transportError(driverError, "validate Driver");
+  validateDriverForAssignment(driver);
+  const { data: existingBus, error: busError } = await admin.from("buses").select("*").eq("number", assignment.busNumber).maybeSingle();
+  if (busError) throw transportError(busError, "validate bus");
+  if (existingBus && existingBus.name !== assignment.busName) throw new AppError(409, "Bus number is already registered to a different bus.", "BUS_NUMBER_CONFLICT");
+  let bus = existingBus;
+  if (!bus) {
+    const { data: createdBus, error: createBusError } = await admin.from("buses").insert({ id: id("BUS"), name: assignment.busName, number: assignment.busNumber, category: "Student Bus", capacity: Number(input.capacity || 40), route: SHIFT_DEFINITIONS[assignment.shift].outbound.route, stops: assignmentStops(SHIFT_DEFINITIONS[assignment.shift].outbound.route), departure_time: SHIFT_DEFINITIONS[assignment.shift].outbound.departureTime, arrival_time: SHIFT_DEFINITIONS[assignment.shift].outbound.departureTime, status: "On Time" }).select("*").single();
+    if (createBusError) throw transportError(createBusError, "create the assigned bus", "BUS_CREATE_FAILED");
+    bus = createdBus;
+  }
+  const assignmentId = input.id || id("ASN");
+  const { data, error } = await admin.from("transport_assignments").upsert({ id: assignmentId, service_date: assignment.serviceDate, shift: assignment.shift, passenger_group: assignment.passengerGroup, bus_id: bus.id, driver_profile_id: driver.id, status: assignment.status }).select("*").single();
+  if (error) throw transportError(error, "save assignment");
+  const trips = [assignmentTrip(assignmentId, assignment, bus, driver, "OUTBOUND"), assignmentTrip(assignmentId, assignment, bus, driver, "RETURN")];
+  const { error: tripError } = await admin.from("transport_trips").upsert(trips);
+  if (tripError) throw transportError(tripError, "create assignment trips");
+  const { error: notificationError } = await admin.from("notifications").insert({ id: id("NTF"), profile_id: driver.id, type: "assignment", title: "Daily bus assignment", message: `${assignment.serviceDate}: ${assignment.shift} / ${GROUP_LABELS[assignment.passengerGroup]} / ${assignment.busName} (${assignment.busNumber})`, tone: "info" });
+  if (notificationError) throw transportError(notificationError, "notify the assigned Driver");
+  return { id: data.id, serviceDate: data.service_date, shift: data.shift, passengerGroup: data.passenger_group, passengerGroupLabel: GROUP_LABELS[data.passenger_group], status: data.status, busId: bus.id, busName: bus.name, busNumber: bus.number, driverEmail: driver.email, driverName: driver.full_name, trips: trips.map((trip) => serializeTrip({ ...trip, buses: bus })) };
+}
+
+export async function cancelAdminAssignment(assignmentId) {
+  const admin = getSupabaseAdmin();
+  const { data: reservations, error: reservationError } = await admin.from("reservations").select("id").in("trip_id", (await admin.from("transport_trips").select("id").eq("assignment_id", assignmentId)).data?.map((row) => row.id) || []).neq("status", "Cancelled");
+  if (reservationError) throw transportError(reservationError, "check assignment reservations");
+  if (reservations?.length) throw new AppError(409, "Cancel affected reservations before cancelling this assignment.", "ASSIGNMENT_RESOLUTION_REQUIRED");
+  const { error } = await admin.from("transport_assignments").update({ status: "CANCELLED" }).eq("id", assignmentId);
+  if (error) throw transportError(error, "cancel assignment");
+  const { error: tripError } = await admin.from("transport_trips").update({ reservation_status: "CLOSED", operational_status: "CANCELLED", status: "Cancelled" }).eq("assignment_id", assignmentId);
+  if (tripError) throw transportError(tripError, "cancel assignment trips");
   return true;
 }
 

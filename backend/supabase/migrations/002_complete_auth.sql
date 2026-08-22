@@ -1,4 +1,4 @@
--- Upgrade databases that ran the original JAATRA profile migration.
+-- Upgrade databases that ran the original SAFAR profile migration.
 do $$
 begin
   if exists (

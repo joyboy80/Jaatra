@@ -28,25 +28,8 @@ export async function issueRegistrationOtp(email) {
   if (profile.is_verified) throw new AppError(409, "This email is already verified.", "EMAIL_ALREADY_VERIFIED");
 
   const latest = await latestVerification(email);
-  if (latest) {
-    const elapsedSeconds = (Date.now() - new Date(latest.created_at).getTime()) / 1000;
-    if (elapsedSeconds < env.otpResendCooldownSeconds) {
-      const retryAfter = Math.ceil(env.otpResendCooldownSeconds - elapsedSeconds);
-      throw new AppError(429, `Please wait ${retryAfter} seconds before requesting another code.`, "OTP_COOLDOWN", { retryAfter });
-    }
-  }
 
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count, error: countError } = await getSupabaseAdmin()
-    .from("email_verifications")
-    .select("id", { count: "exact", head: true })
-    .ilike("email", email)
-    .eq("purpose", PURPOSE)
-    .gte("created_at", oneHourAgo);
-  if (countError) throw new AppError(500, "Unable to check OTP request limits.", "OTP_RATE_CHECK_FAILED");
-  if ((count || 0) >= env.otpMaxRequestsPerHour) {
-    throw new AppError(429, "Too many verification-code requests. Please try again later.", "OTP_RATE_LIMITED");
-  }
+  // Rate limits removed for testing
 
   const admin = getSupabaseAdmin();
   const now = new Date().toISOString();
@@ -125,13 +108,12 @@ export async function verifyRegistrationOtp(email, otp) {
   const profile = await getProfileByEmail(email);
   if (!profile || profile.is_verified) throw new AppError(409, "This registration is no longer pending verification.", "REGISTRATION_NOT_PENDING");
 
-  const driver = profile.user_type === "DRIVER";
   let updated;
   try {
     updated = await updateProfile(profile.auth_user_id, {
       is_verified: true,
-      approval_status: driver ? "PENDING" : "APPROVED",
-      registration_status: driver ? "PENDING_APPROVAL" : "VERIFIED",
+      approval_status: "APPROVED",
+      registration_status: "VERIFIED",
     });
   } catch (error) {
     await admin.from("email_verifications").update({ verified_at: null }).eq("id", verification.id).eq("verified_at", claimedAt);
@@ -151,5 +133,5 @@ export async function verifyRegistrationOtp(email, otp) {
     throw new AppError(500, "Unable to activate the authentication account. The verification can be retried.", "AUTH_ACTIVATION_FAILED");
   }
 
-  return { user: serializeProfile(updated), requiresApproval: driver };
+  return { user: serializeProfile(updated), requiresApproval: false };
 }

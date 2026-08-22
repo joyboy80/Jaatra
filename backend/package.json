@@ -1,5 +1,5 @@
 {
-  "name": "jaatra-backend",
+  "name": "safar-backend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,10 +16,12 @@
     "admin:create": "node scripts/create-admin.js"
   },
   "dependencies": {
+    "@google/genai": "^2.18.0",
     "@supabase/supabase-js": "^2.55.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
-    "nodemailer": "^7.0.0"
+    "nodemailer": "^7.0.0",
+    "pdfkit": "^0.19.1"
   }
 }

@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
 import { createTrackingConnection } from "../services/websocketService";
-import { getTrackingSnapshot } from "../services/trackingService";
 
 export default function useLiveTracking() {
-  const [buses, setBuses] = useState(() => getTrackingSnapshot());
+  const [buses, setBuses] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState("connecting");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const connection = createTrackingConnection({
       onMessage(message) {
-        if (message.type === "fleet:update") setBuses(message.data);
+        if (message.type === "fleet:update") {
+          setBuses(message.data);
+          setError("");
+        }
       },
       onStatus: setConnectionStatus,
+      onError(error) {
+        setError(error.message);
+      },
     });
     connection.connect();
     return () => connection.disconnect();
@@ -20,6 +26,7 @@ export default function useLiveTracking() {
   return {
     buses,
     connectionStatus,
+    error,
     lastUpdated: buses[0]?.updatedAt || null,
   };
 }

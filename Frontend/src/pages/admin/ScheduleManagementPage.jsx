@@ -1,49 +1,31 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import AdminFormModal from "../../components/admin/AdminFormModal";
-import AdminStatusBadge from "../../components/admin/AdminStatusBadge";
-import ResponsiveDataList from "../../components/admin/ResponsiveDataList";
 import Button from "../../components/common/Button";
+import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
+import Loading from "../../components/common/Loading";
 import Modal from "../../components/common/Modal";
 import Select from "../../components/common/Select";
 import PageHeader from "../../components/layout/PageHeader";
 import { useAuth } from "../../context/AuthContext";
 import DashboardLayout from "../../layouts/DashboardLayout";
-import { deleteSchedule, getAdminBuses, getAdminSchedules, saveSchedule, scheduleTypes } from "../../services/adminService";
+import { cancelAssignment, getAdminAssignments, saveAssignment } from "../../services/adminService";
 import { toDateInputValue } from "../../utils/date";
 
-const blankSchedule = { busId: "", busName: "", route: "", date: toDateInputValue(new Date()), departureTime: "07:30 AM", arrivalTime: "08:20 AM", busCategory: "Student Bus", scheduleType: "Regular", status: "Scheduled" };
+const shifts = { MORNING: ["CUET to Station", "05:45 AM", "Station to CUET", "07:10 AM"], NOON: ["CUET to Kaptai Rastar Matha", "01:30 PM", "Kaptai Rastar Matha to CUET", "02:15 PM"], AFTERNOON: ["CUET to Station", "04:15 PM", "Station to CUET", "08:45 PM"] };
+const groups = [["ALL_STUDENTS", "All Students"], ["FEMALE_STUDENTS", "Female Students"], ["ALL_TEACHERS", "All Teachers"], ["ALL_STAFF", "All Staff"], ["ALL_USERS", "All Passengers"]];
+const blank = () => ({ serviceDate: toDateInputValue(), shift: "MORNING", passengerGroup: "ALL_STUDENTS", driverEmail: "", busName: "", busNumber: "", capacity: 40 });
 
 export default function ScheduleManagementPage() {
-  const { setToast } = useAuth();
-  const [schedules, setSchedules] = useState([]);
-  const [buses, setBuses] = useState([]);
-  const [form, setForm] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-
-  async function load() { const [scheduleData, busData] = await Promise.all([getAdminSchedules(), getAdminBuses()]); setSchedules(scheduleData); setBuses(busData); }
+  const { setToast } = useAuth(); const [assignments, setAssignments] = useState([]); const [form, setForm] = useState(null); const [removing, setRemoving] = useState(null); const [error, setError] = useState(""); const [loading, setLoading] = useState(true);
+  async function load() { setLoading(true); try { setAssignments(await getAdminAssignments()); setError(""); } catch (e) { setError(e.message); } finally { setLoading(false); } }
   useEffect(() => { load(); }, []);
-
-  function chooseBus(busId) {
-    const bus = buses.find((item) => item.id === busId);
-    setForm((current) => ({ ...current, busId, busName: bus?.name || "", route: bus?.route || current.route, busCategory: bus?.type || current.busCategory }));
-  }
-
-  async function submit(event) { event.preventDefault(); await saveSchedule(form); setForm(null); setToast({ type: "success", message: "Schedule saved and published to operations." }); await load(); }
-  async function confirmDelete() { await deleteSchedule(deleteTarget.id); setDeleteTarget(null); setToast({ type: "info", message: "Schedule removed." }); await load(); }
-  const actions = (schedule) => <div className="flex gap-1"><button className="focus-ring rounded-lg p-2 text-jaatra-teal hover:bg-jaatra-mint" aria-label={`Edit schedule ${schedule.id}`} onClick={() => setForm({ ...schedule })}><Pencil className="h-4 w-4" /></button><button className="focus-ring rounded-lg p-2 text-red-600 hover:bg-red-50" aria-label={`Delete schedule ${schedule.id}`} onClick={() => setDeleteTarget(schedule)}><Trash2 className="h-4 w-4" /></button></div>;
-  const columns = [
-    { label: "Bus", render: (item) => <div><p className="font-bold text-jaatra-ink">{item.busName}</p><p className="text-xs text-jaatra-gray">{item.busCategory}</p></div> },
-    { label: "Route", render: (item) => <span className="text-jaatra-gray">{item.route}</span> },
-    { label: "Date", render: (item) => <span className="font-medium text-jaatra-ink">{item.date}</span> },
-    { label: "Time", render: (item) => <span className="text-jaatra-gray">{item.departureTime} - {item.arrivalTime}</span> },
-    { label: "Type", render: (item) => <span className="font-medium text-jaatra-gray">{item.scheduleType}</span> },
-    { label: "Status", render: (item) => <AdminStatusBadge status={item.status} /> },
-    { label: "Actions", render: actions },
-  ];
-
-  return <DashboardLayout><div className="space-y-6"><PageHeader eyebrow="Service Planning" title="Schedules" description="Publish regular, weekend, holiday, exam, and special event trips." actions={<Button icon={Plus} onClick={() => setForm({ ...blankSchedule, busId: buses[0]?.id || "", busName: buses[0]?.name || "", route: buses[0]?.route || "", busCategory: buses[0]?.type || "Student Bus" })}>Add Schedule</Button>} /><ResponsiveDataList columns={columns} rows={schedules} renderMobile={(item) => <article className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"><div className="flex items-start justify-between gap-3"><div><h2 className="font-bold text-jaatra-ink">{item.busName}</h2><p className="mt-1 text-sm text-jaatra-gray">{item.route}</p></div><AdminStatusBadge status={item.status} /></div><div className="mt-3 grid grid-cols-2 gap-2 text-sm"><span>{item.date}</span><span>{item.scheduleType}</span><span>{item.departureTime}</span><span>{item.arrivalTime}</span></div><div className="mt-3">{actions(item)}</div></article>} /></div>
-    <AdminFormModal open={Boolean(form)} title={form?.id ? "Edit schedule" : "Add schedule"} onClose={() => setForm(null)} onSubmit={submit} submitLabel="Save Schedule">{form && <><div className="grid gap-4 sm:grid-cols-2"><Select label="Bus" value={form.busId} onChange={(e) => chooseBus(e.target.value)}>{buses.map((bus) => <option key={bus.id} value={bus.id}>{bus.name} ({bus.number})</option>)}</Select><Select label="Schedule type" value={form.scheduleType} onChange={(e) => setForm({ ...form, scheduleType: e.target.value })}>{scheduleTypes.map((type) => <option key={type}>{type}</option>)}</Select></div><label className="block"><span className="mb-2 block text-sm font-semibold">Route</span><input className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3 text-sm" required value={form.route} onChange={(e) => setForm({ ...form, route: e.target.value })} /></label><div className="grid gap-4 sm:grid-cols-3"><label><span className="mb-2 block text-sm font-semibold">Date</span><input className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3 text-sm" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label><span className="mb-2 block text-sm font-semibold">Departure</span><input className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3 text-sm" required value={form.departureTime} onChange={(e) => setForm({ ...form, departureTime: e.target.value })} /></label><label><span className="mb-2 block text-sm font-semibold">Arrival</span><input className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3 text-sm" required value={form.arrivalTime} onChange={(e) => setForm({ ...form, arrivalTime: e.target.value })} /></label></div><Select label="Status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{['Scheduled', 'Boarding', 'In Progress', 'Delayed', 'Completed', 'Cancelled'].map((status) => <option key={status}>{status}</option>)}</Select></>}</AdminFormModal>
-    <Modal open={Boolean(deleteTarget)} title="Delete this schedule?" description={`${deleteTarget?.busName || "This bus"} will no longer operate this scheduled trip.`} confirmLabel="Delete Schedule" danger onClose={() => setDeleteTarget(null)} onConfirm={confirmDelete} />
-  </DashboardLayout>;
+  const preview = useMemo(() => shifts[form?.shift] || shifts.MORNING, [form?.shift]);
+  async function submit(e) { e.preventDefault(); try { await saveAssignment(form); setForm(null); setToast({ type: "success", message: "Assignment saved; outbound and return trips are open." }); await load(); } catch (err) { setError(err.message); } }
+  async function cancel() { try { await cancelAssignment(removing.id); setRemoving(null); setToast({ type: "info", message: "Assignment cancelled." }); await load(); } catch (err) { setError(err.message); setRemoving(null); } }
+  return <DashboardLayout><div className="space-y-6"><PageHeader eyebrow="Service Planning" title="Schedules" description="Publish a dated bus schedule for a verified, active Driver and passenger group. Eligible users can view and reserve both trips on its service date." actions={<Button icon={Plus} onClick={() => setForm(blank())}>Add Schedule</Button>} />
+    {error && <ErrorState title="Assignments unavailable" message={error} />}{loading ? <Loading label="Loading assignments" /> : assignments.length ? <div className="grid gap-4 lg:grid-cols-2">{assignments.map((item) => <article key={item.id} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"><div className="flex justify-between gap-3"><div><p className="text-sm font-bold text-safar-teal">{item.serviceDate} · {item.shift}</p><h2 className="mt-1 font-bold text-safar-ink">{item.busName} ({item.busNumber})</h2><p className="text-sm text-safar-gray">{item.passengerGroupLabel} · {item.driverEmail}</p></div><button className="text-red-600" aria-label="Cancel assignment" onClick={() => setRemoving(item)}><XCircle /></button></div><div className="mt-4 space-y-1 text-sm text-safar-gray">{item.trips.map((trip) => <p key={trip.id}>{trip.direction}: {trip.route} — {trip.departureTime}</p>)}</div></article>)}</div> : <EmptyState title="No daily assignments" message="Create an assignment to publish its outbound and return trips." />}
+    <AdminFormModal open={!!form} title="Daily bus assignment" onClose={() => setForm(null)} onSubmit={submit} submitLabel="Save Assignment">{form && <div className="space-y-4"><div className="grid gap-4 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-semibold">Service date</span><input type="date" required className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3" value={form.serviceDate} onChange={(e) => setForm({ ...form, serviceDate: e.target.value })} /></label><Select label="Shift" value={form.shift} onChange={(e) => setForm({ ...form, shift: e.target.value })}>{Object.keys(shifts).map((shift) => <option key={shift}>{shift}</option>)}</Select><Select label="Passenger group" value={form.passengerGroup} onChange={(e) => setForm({ ...form, passengerGroup: e.target.value })}>{groups.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select><label><span className="mb-2 block text-sm font-semibold">Driver email</span><input type="email" required className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3" value={form.driverEmail} onChange={(e) => setForm({ ...form, driverEmail: e.target.value })} /></label><label><span className="mb-2 block text-sm font-semibold">Bus name</span><input required className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3" value={form.busName} onChange={(e) => setForm({ ...form, busName: e.target.value })} /></label><label><span className="mb-2 block text-sm font-semibold">Bus number</span><input required className="focus-ring h-11 w-full rounded-xl border border-slate-200 px-3" value={form.busNumber} onChange={(e) => setForm({ ...form, busNumber: e.target.value })} /></label></div><div className="rounded-xl bg-safar-mint p-4 text-sm text-safar-ink"><p className="font-bold">Automatic route and time preview</p><p className="mt-2">Outbound: {preview[0]} — {preview[1]}</p><p>Return: {preview[2]} — {preview[3]}</p></div></div>}</AdminFormModal>
+    <Modal open={!!removing} title="Cancel assignment?" description="Cancellation is blocked until any affected active reservations are safely resolved." confirmLabel="Cancel Assignment" danger onClose={() => setRemoving(null)} onConfirm={cancel} /></div></DashboardLayout>;
 }

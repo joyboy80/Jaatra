@@ -2,11 +2,12 @@ import { Navigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import TicketCard from "../../components/ticket/TicketCard";
 import Modal from "../../components/common/Modal";
+import ErrorState from "../../components/common/ErrorState";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { useAuth } from "../../context/AuthContext";
 import { cancelReservation } from "../../services/reservationService";
-import { getTicketById } from "../../services/ticketService";
+import { getTicketById, downloadTicket, shareTicket, downloadInvoice } from "../../services/ticketService";
 import { canCancelReservation } from "../../utils/reservationRules";
 
 export default function TicketDetailsPage({ role }) {
@@ -15,10 +16,10 @@ export default function TicketDetailsPage({ role }) {
   const [ticket, setTicket] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [error, setError] = useState("");
 
   async function loadTicket() {
-    setTicket(await getTicketById(user.id, ticketId));
-    setLoaded(true);
+    try { setTicket(await getTicketById(user.id, ticketId)); setError(""); } catch (requestError) { setError(requestError.message); } finally { setLoaded(true); }
   }
 
   useEffect(() => {
@@ -42,16 +43,40 @@ export default function TicketDetailsPage({ role }) {
         <PageHeader
           eyebrow="Digital Ticket"
           title="Ticket details"
-          description="This QR code contains only the unique ticket identifier."
+          description="This ticket identifier is verified by the backend Driver endpoint."
         />
+        {error && <ErrorState title="Ticket unavailable" message={error} />}
         {ticket && (
           <TicketCard
             ticket={ticket}
             role={role}
             detailed
             onCancel={() => canCancelReservation(ticket) && setCancelOpen(true)}
-            onDownload={() => setToast({ type: "info", message: `Download prepared for ${ticket.ticketId}.` })}
-            onShare={() => setToast({ type: "info", message: `Share link prepared for ${ticket.ticketId}.` })}
+            onDownload={async () => {
+              try {
+                await downloadTicket(ticket.id);
+                setToast({ type: "success", message: "Ticket downloaded successfully." });
+              } catch (err) {
+                setToast({ type: "error", message: err.message });
+              }
+            }}
+            onDownloadInvoice={async () => {
+              try {
+                await downloadInvoice(ticket.id, ticket.invoice?.invoiceNumber);
+                setToast({ type: "success", message: "Invoice downloaded successfully." });
+              } catch (err) {
+                setToast({ type: "error", message: err.message });
+              }
+            }}
+            onShare={async () => {
+              try {
+                const link = await shareTicket(ticket.id);
+                await navigator.clipboard.writeText(link);
+                setToast({ type: "success", message: "Share link copied to clipboard!" });
+              } catch (err) {
+                setToast({ type: "error", message: err.message });
+              }
+            }}
           />
         )}
       </div>

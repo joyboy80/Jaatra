@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Modal from "../components/common/Modal";
 import Toast from "../components/common/Toast";
-import { backendEnabled } from "../services/api";
 import MobileMenu from "../components/layout/MobileMenu";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
@@ -22,8 +21,15 @@ export default function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50" data-role={user.role}>
-      <div className="flex min-h-screen">
+    <div className="relative min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300" data-role={user.role}>
+      {/* Abstract Background Elements */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-[10%] top-0 h-[500px] w-[500px] rounded-full bg-brand-maroon/5 mix-blend-multiply blur-3xl dark:bg-pink-900/10 dark:mix-blend-lighten" />
+        <div className="absolute -right-[10%] top-[10%] h-[600px] w-[600px] rounded-full bg-brand-cyan/5 mix-blend-multiply blur-3xl dark:bg-cyan-900/10 dark:mix-blend-lighten" />
+        <div className="absolute left-[20%] top-[40%] h-[400px] w-[400px] rounded-full bg-brand-purple/5 mix-blend-multiply blur-3xl dark:bg-purple-900/10 dark:mix-blend-lighten" />
+      </div>
+
+      <div className="relative flex min-h-screen z-10">
         <Sidebar user={user} onLogout={() => setLogoutOpen(true)} />
         <MobileMenu
           open={mobileOpen}
@@ -41,8 +47,8 @@ export default function DashboardLayout({ children }) {
       </div>
       <Modal
         open={logoutOpen}
-        title="Log out of Jaatra?"
-        description={backendEnabled ? "Your secure server session will be ended and you will return to the login screen." : "Your current mock session will be cleared and you will return to the login screen."}
+        title="Log out of Safar?"
+        description="Your secure server session will be ended and you will return to the login screen."
         confirmLabel="Logout"
         danger
         onClose={() => setLogoutOpen(false)}

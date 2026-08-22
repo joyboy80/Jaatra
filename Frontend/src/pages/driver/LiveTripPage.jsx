@@ -11,7 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 import useLiveTracking from "../../hooks/useLiveTracking";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { getCurrentTrip, getTripSummary, updateTripStatus } from "../../services/driverService";
-import { publishDriverLocation, setLiveBusStatus } from "../../services/trackingService";
+import { publishDriverLocation } from "../../services/trackingService";
 
 export default function LiveTripPage() {
   const { setToast } = useAuth();
@@ -28,7 +28,6 @@ export default function LiveTripPage() {
 
   async function setStatus(status) {
     const updated = await updateTripStatus(summary.trip.id, status);
-    setLiveBusStatus(updated.busId, status === "Completed" ? "Completed" : "Running");
     setSummary((current) => ({ ...current, trip: updated }));
     setToast({ type: "success", message: status === "Completed" ? "Trip completed and live tracking closed." : "Trip started. GPS updates are active." });
     setEndOpen(false);
@@ -37,28 +36,61 @@ export default function LiveTripPage() {
   const trip = summary?.trip;
   const liveBus = buses.find((bus) => bus.id === trip?.busId);
 
+  const [gpsStatus, setGpsStatus] = useState("idle"); // idle | active | error
+  const [gpsError, setGpsError] = useState("");
+
   useEffect(() => {
-    if (trip?.status !== "In Progress" || !navigator.geolocation) return undefined;
-    const watchId = navigator.geolocation.watchPosition((position) => {
-      publishDriverLocation({
-        tripId: trip.id,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        speed: Math.max(0, (position.coords.speed || 0) * 3.6),
-        locationLabel: "Live GPS position",
-        nextStop: trip.nextStop,
-        etaMinutes: Number.parseInt(trip.eta, 10) || 0,
-        status: "Running",
-        progress: 0,
-      }).catch(() => undefined);
-    }, () => undefined, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+    if (trip?.status !== "In Progress") { setGpsStatus("idle"); return undefined; }
+    if (!navigator.geolocation) { setGpsStatus("error"); setGpsError("GPS is not supported by this browser."); return undefined; }
+
+    const isSecure = location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    if (!isSecure) {
+      setGpsStatus("error");
+      setGpsError(`GPS requires HTTPS. Open this page using https://${location.hostname}:${location.port}${location.pathname} on your phone.`);
+      return undefined;
+    }
+
+    setGpsStatus("active");
+    setGpsError("");
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setGpsStatus("active");
+        setGpsError("");
+        publishDriverLocation({
+          tripId: trip.id,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          speed: Math.max(0, (position.coords.speed || 0) * 3.6),
+          locationLabel: "Live GPS position",
+          nextStop: trip.nextStop,
+          etaMinutes: Number.parseInt(trip.eta, 10) || 0,
+          status: "Running",
+          progress: 0,
+        }).catch((error) => setToast({ type: "error", message: error.message }));
+      },
+      (error) => {
+        setGpsStatus("error");
+        const messages = {
+          1: "Location permission denied. Please allow GPS access in your browser settings.",
+          2: "Unable to determine your location. Make sure GPS is enabled on your device.",
+          3: "Location request timed out. Retrying...",
+        };
+        setGpsError(messages[error.code] || error.message);
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [trip?.eta, trip?.id, trip?.nextStop, trip?.status]);
+  }, [setToast, trip?.eta, trip?.id, trip?.nextStop, trip?.status]);
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader eyebrow="Live Operations" title="Live trip" description="Control the current trip while GPS, ETA, location, and passenger status update in real time." actions={trip && <TripStatusBadge status={trip.status} />} />
+        
+        {gpsStatus === "error" && <div className="flex items-start gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200"><MapPin className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-bold">GPS Tracking Issue</p><p className="mt-1">{gpsError}</p></div></div>}
+        {gpsStatus === "active" && <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>GPS is active — broadcasting your location to all users</div>}
+
         {trip && liveBus && <>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
@@ -66,7 +98,7 @@ export default function LiveTripPage() {
               [Navigation, "Next stop", liveBus.nextStop],
               [Flag, "ETA", `${liveBus.etaMinutes} min`],
               [Users, "Passengers", `${summary.boarded} / ${summary.passengerCount} boarded`],
-            ].map(([Icon, label, value]) => <div key={label} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"><Icon className="h-5 w-5 text-jaatra-teal" /><p className="mt-3 text-xs font-bold uppercase text-jaatra-gray">{label}</p><p className="mt-1 break-words font-bold text-jaatra-ink">{value}</p></div>)}
+            ].map(([Icon, label, value]) => <div key={label} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"><Icon className="h-5 w-5 text-safar-teal" /><p className="mt-3 text-xs font-bold uppercase text-safar-gray">{label}</p><p className="mt-1 break-words font-bold text-safar-ink">{value}</p></div>)}
           </section>
 
           <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -75,7 +107,7 @@ export default function LiveTripPage() {
           </section>
 
           <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-lg font-bold text-jaatra-ink">{trip.route}</h2><p className="mt-1 text-sm text-jaatra-gray">{trip.departureTime} - {trip.arrivalTime} | {liveBus.speed} km/h</p></div><div className="grid gap-2 sm:grid-cols-3"><Button icon={CirclePlay} disabled={trip.status === "In Progress" || trip.status === "Completed"} onClick={() => setStatus("In Progress")}>Start Trip</Button><Link className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-jaatra-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50" to="/driver/delay"><CirclePause className="h-4 w-4" /> Report Delay</Link><Button variant="danger" icon={Flag} disabled={trip.status === "Completed"} onClick={() => setEndOpen(true)}>End Trip</Button></div></div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-lg font-bold text-safar-ink">{trip.route}</h2><p className="mt-1 text-sm text-safar-gray">{trip.departureTime} - {trip.arrivalTime} | {liveBus.speed} km/h</p></div><div className="grid gap-2 sm:grid-cols-3"><Button icon={CirclePlay} disabled={trip.status === "In Progress" || trip.status === "Completed"} onClick={() => setStatus("In Progress")}>Start Trip</Button><Link className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50" to="/driver/delay"><CirclePause className="h-4 w-4" /> Report Delay</Link><Button variant="danger" icon={Flag} disabled={trip.status === "Completed"} onClick={() => setEndOpen(true)}>End Trip</Button></div></div>
           </section>
         </>}
       </div>

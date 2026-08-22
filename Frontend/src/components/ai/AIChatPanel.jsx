@@ -1,98 +1,128 @@
-import { Bot, CheckCircle2, Send, Sparkles, Trash2, UserRound, X } from "lucide-react";
+import { Bot, Send, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { askSafarAI, suggestedQuestions } from "../../services/aiService";
 import Button from "../common/Button";
-import Modal from "../common/Modal";
-import { useAuth } from "../../context/AuthContext";
-import { askJaatraAI, clearConversation, getConversation, saveConversation, suggestedQuestions } from "../../services/aiService";
+import Loading from "../common/Loading";
 
-function RecommendationCard({ recommendation }) {
-  return (
-    <div className="mt-3 rounded-lg bg-violet-50 p-3 ring-1 ring-violet-100">
-      <p className="text-xs font-bold uppercase tracking-wider text-violet-700">Recommended Bus</p>
-      <p className="mt-1 text-lg font-bold text-jaatra-ink">{recommendation.busName}</p>
-      <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div><dt className="text-jaatra-gray">Departure</dt><dd className="font-bold text-jaatra-ink">{recommendation.departureTime}</dd></div>
-        <div><dt className="text-jaatra-gray">Arrival</dt><dd className="font-bold text-jaatra-ink">{recommendation.arrivalTime}</dd></div>
-        <div className="col-span-2"><dt className="text-jaatra-gray">Available seats</dt><dd className="font-bold text-jaatra-ink">{recommendation.availableSeats}</dd></div>
-      </dl>
-      <div className="mt-3 space-y-1.5">{recommendation.reasons.map((reason) => <p key={reason} className="flex items-center gap-2 text-xs font-semibold text-jaatra-ink"><CheckCircle2 className="h-3.5 w-3.5 text-cyan-600" />{reason}</p>)}</div>
-    </div>
-  );
-}
+const welcome = { id: "welcome", role: "assistant", text: "I use your authorized SAFAR transport data. Ask about your buses, schedules, tracking, reservations, tickets, or seats." };
 
 export default function AIChatPanel({ onClose, floating = false }) {
-  const { user } = useAuth();
-  const [messages, setMessages] = useState(() => getConversation(user.id));
-  const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
-  const [error, setError] = useState("");
-  const [clearOpen, setClearOpen] = useState(false);
-  const scrollRef = useRef(null);
+  const [messages, setMessages] = useState([welcome]);
+  const [question, setQuestion] = useState("");
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef(null);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, typing]);
-
-  async function sendMessage(question = input) {
-    const prompt = question.trim();
-    if (!prompt || typing) return;
-    const userMessage = { id: `user-${Date.now()}`, role: "user", content: prompt, timestamp: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date()) };
-    const pendingMessages = [...messages, userMessage];
-    setMessages(pendingMessages);
-    saveConversation(user.id, pendingMessages);
-    setInput("");
-    setError("");
-    setTyping(true);
+  async function submit(event) {
+    event?.preventDefault();
+    const text = question.trim();
+    if (!text || loading) return;
+    
+    // Remove previous error messages before continuing
+    const validMessages = messages.filter(msg => !msg.error);
+    
+    setMessages([...validMessages, { id: `user-${Date.now()}`, role: "user", text }]);
+    setQuestion(""); 
+    setLoading(true);
+    
     try {
-      const response = await askJaatraAI({ prompt, user, role: user.role });
-      const nextMessages = [...pendingMessages, response];
-      setMessages(nextMessages);
-      saveConversation(user.id, nextMessages);
-    } catch (_error) {
-      setError("Jaatra AI could not answer right now. Please try again.");
-    } finally {
-      setTyping(false);
+      const response = await askSafarAI(text, validMessages);
+      setMessages((items) => [...items, { id: `assistant-${Date.now()}`, role: "assistant", text: response.answer }]);
+    } catch (error) {
+      setMessages((items) => [...items, { id: `error-${Date.now()}`, role: "assistant", error: true, text: error.message }]);
+    } finally { 
+      setLoading(false); 
     }
   }
 
-  function confirmClear() {
-    setMessages(clearConversation(user.id));
-    setClearOpen(false);
-  }
-
   return (
-    <div className={`ai-shell flex h-full min-h-0 flex-col overflow-hidden bg-white ${floating ? "sm:rounded-xl sm:shadow-soft sm:ring-1 sm:ring-slate-200" : "rounded-xl shadow-sm ring-1 ring-slate-200"}`}>
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3"><div className="ai-avatar relative grid h-10 w-10 shrink-0 place-items-center rounded-lg text-white"><Bot className="h-5 w-5" /><span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-cyan-400 ring-2 ring-white" /></div><div className="min-w-0"><h2 className="font-bold text-jaatra-ink">Jaatra AI</h2><p className="truncate text-xs text-jaatra-gray">Context-aware transport assistant</p></div></div>
-        <div className="flex gap-1"><button className="focus-ring icon-button" onClick={() => setClearOpen(true)} aria-label="Clear AI conversation"><Trash2 className="h-4 w-4" /></button>{onClose && <button className="focus-ring icon-button" onClick={onClose} aria-label="Close Jaatra AI"><X className="h-5 w-5" /></button>}</div>
+    <div className={`ai-shell flex h-full min-h-0 flex-col overflow-hidden bg-white/80 backdrop-blur-3xl dark:bg-slate-900/80 ${floating ? "sm:rounded-3xl sm:shadow-float sm:ring-1 sm:ring-white/20" : "rounded-3xl shadow-sm ring-1 ring-slate-200/50"}`}>
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200/50 bg-white/50 px-6 py-4 dark:border-slate-800/50 dark:bg-slate-900/50">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="ai-avatar grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white shadow-lg">
+            <Bot className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-bold text-safar-ink">Safar AI</h2>
+            <p className="truncate text-xs font-medium text-safar-gray">Intelligent Transport Assistant</p>
+          </div>
+        </div>
+        {onClose && (
+          <button className="focus-ring icon-button rounded-full" onClick={onClose} aria-label="Close SAFAR AI">
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </header>
 
-      <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/70 p-4" aria-live="polite">
-        {messages.map((message) => (
-          <div key={message.id} className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-            {message.role === "assistant" && <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-violet-100 text-violet-600"><Bot className="h-4 w-4" /></div>}
-            <div className={`max-w-[84%] rounded-xl px-3.5 py-3 text-sm leading-6 ${message.role === "user" ? "rounded-br-sm bg-jaatra-teal text-white" : "rounded-bl-sm bg-white text-jaatra-ink shadow-sm ring-1 ring-slate-200"}`}>
-              <p>{message.content}</p>
-              {message.recommendation && <RecommendationCard recommendation={message.recommendation} />}
-              <p className={`mt-1.5 text-[10px] font-semibold ${message.role === "user" ? "text-white/70" : "text-jaatra-gray"}`}>{message.timestamp}</p>
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6 scroll-smooth">
+        {messages.length === 1 && !loading && (
+          <div className="my-8 flex flex-col items-center justify-center text-center animate-fade-in">
+            <div className="mb-4 grid h-24 w-24 place-items-center rounded-3xl bg-gradient-to-br from-brand-maroon/20 to-brand-cyan/20 shadow-inner">
+              <Bot className="h-12 w-12 text-brand-maroon dark:text-pink-400" />
             </div>
-            {message.role === "user" && <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-jaatra-navy text-white"><UserRound className="h-4 w-4" /></div>}
+            <h3 className="font-display text-2xl font-bold text-gradient">Hi, I'm Safar AI 👋</h3>
+            <p className="mt-3 max-w-[280px] text-sm text-safar-gray leading-relaxed">
+              Your intelligent transportation assistant. Ask me about buses, routes, schedules, locations, and travel information.
+            </p>
           </div>
+        )}
+
+        {messages.map((message) => (
+          <article key={message.id} className={`flex gap-3 animate-slide-up ${message.role === "user" ? "justify-end" : ""}`}>
+            {message.role !== "user" && (
+              <span className="ai-avatar grid h-8 w-8 shrink-0 place-items-center rounded-full text-white shadow-sm mt-1">
+                <Bot className="h-4 w-4" />
+              </span>
+            )}
+            
+            <p className={`max-w-[85%] whitespace-pre-wrap rounded-3xl px-5 py-3 text-sm leading-relaxed shadow-sm ${
+              message.role === "user" 
+                ? "rounded-tr-none bg-slate-100 text-safar-ink dark:bg-slate-800 dark:text-white" 
+                : message.error 
+                  ? "rounded-tl-none bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-900/30 dark:ring-red-900" 
+                  : "rounded-tl-none bg-gradient-to-br from-brand-maroon/5 to-brand-purple/5 text-safar-ink ring-1 ring-brand-purple/20 dark:from-pink-900/10 dark:to-purple-900/10 dark:text-slate-100 dark:ring-purple-500/30"
+            }`}>
+              {message.text}
+            </p>
+
+            {message.role === "user" && (
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-200 text-safar-gray dark:bg-slate-700 dark:text-slate-300 mt-1">
+                <UserRound className="h-4 w-4" />
+              </span>
+            )}
+          </article>
         ))}
-        {typing && <div className="flex items-center gap-2"><div className="grid h-8 w-8 place-items-center rounded-lg bg-violet-100 text-violet-600"><Bot className="h-4 w-4" /></div><div className="flex gap-1 rounded-xl rounded-bl-sm bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200" aria-label="Jaatra AI is typing"><span className="h-2 w-2 animate-bounce rounded-full bg-violet-500" /><span className="h-2 w-2 animate-bounce rounded-full bg-cyan-500 [animation-delay:120ms]" /><span className="h-2 w-2 animate-bounce rounded-full bg-violet-500 [animation-delay:240ms]" /></div></div>}
-        {error && <div className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700 ring-1 ring-red-100">{error}</div>}
+
+        {loading && (
+          <article className="flex gap-3 animate-fade-in">
+            <span className="ai-avatar grid h-8 w-8 shrink-0 place-items-center rounded-full text-white shadow-sm mt-1">
+              <Bot className="h-4 w-4" />
+            </span>
+            <div className="flex h-[44px] w-[60px] items-center justify-center gap-1.5 rounded-3xl rounded-tl-none bg-gradient-to-br from-brand-maroon/5 to-brand-purple/5 ring-1 ring-brand-purple/20 dark:from-pink-900/10 dark:to-purple-900/10 dark:ring-purple-500/30">
+              <span className="h-2 w-2 animate-bounce rounded-full bg-brand-purple" style={{ animationDelay: "0ms" }}></span>
+              <span className="h-2 w-2 animate-bounce rounded-full bg-brand-purple" style={{ animationDelay: "150ms" }}></span>
+              <span className="h-2 w-2 animate-bounce rounded-full bg-brand-purple" style={{ animationDelay: "300ms" }}></span>
+            </div>
+          </article>
+        )}
+        <div ref={endRef} />
       </div>
 
-      <div className="shrink-0 border-t border-slate-100 bg-white p-3">
-        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">{suggestedQuestions.slice(0, floating ? 4 : 6).map((question) => <button key={question} type="button" className="focus-ring min-h-9 shrink-0 rounded-full bg-violet-50 px-3 text-xs font-semibold text-violet-700 ring-1 ring-violet-100 transition hover:bg-cyan-50 hover:text-cyan-700" onClick={() => sendMessage(question)}>{question}</button>)}</div>
-        <form className="flex items-end gap-2" onSubmit={(event) => { event.preventDefault(); sendMessage(); }}>
-          <label className="min-w-0 flex-1"><span className="sr-only">Ask Jaatra AI</span><textarea className="focus-ring max-h-28 min-h-11 w-full resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-jaatra-ink" rows="1" placeholder="Ask about buses, routes, or seats" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendMessage(); } }} /></label>
-          <Button className="h-11 w-11 shrink-0 px-0" icon={Send} disabled={!input.trim() || typing} type="submit"><span className="sr-only">Send message</span></Button>
+      <div className="shrink-0 bg-white/50 p-4 backdrop-blur-md border-t border-slate-200/50 dark:bg-slate-900/50 dark:border-slate-800/50">
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {suggestedQuestions.map((item) => (
+            <button key={item} type="button" className="focus-ring shrink-0 rounded-full bg-brand-cyan/10 px-4 py-2 text-xs font-semibold text-brand-cyan hover:bg-brand-cyan hover:text-white transition-colors duration-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:hover:bg-cyan-600 dark:hover:text-white" onClick={() => { setQuestion(item); }}>
+              {item}
+            </button>
+          ))}
+        </div>
+        <form className="flex gap-2" onSubmit={submit}>
+          <input className="focus-ring min-w-0 flex-1 rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm text-safar-ink shadow-inner placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask Safar AI..." maxLength={600} />
+          <button type="submit" disabled={!question.trim() || loading} className="ai-fab grid h-12 w-12 shrink-0 place-items-center rounded-full text-white disabled:pointer-events-none disabled:opacity-50" aria-label="Send question">
+            {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Send className="h-5 w-5 ml-0.5" />}
+          </button>
         </form>
-        <p className="mt-2 flex items-center justify-center gap-1 text-[10px] font-semibold text-jaatra-gray"><Sparkles className="h-3 w-3" /> Mock AI responses use live Jaatra data</p>
       </div>
-
-      <Modal open={clearOpen} title="Clear AI conversation?" description="Your saved mock conversation history will be removed." confirmLabel="Clear Chat" danger onClose={() => setClearOpen(false)} onConfirm={confirmClear} />
     </div>
   );
 }

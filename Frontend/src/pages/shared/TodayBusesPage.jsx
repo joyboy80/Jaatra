@@ -6,6 +6,7 @@ import PortalBusCard from "../../components/bus/PortalBusCard";
 import Select from "../../components/common/Select";
 import Badge from "../../components/common/Badge";
 import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
 import { getAllowedBusCategories, parseDepartureMinutes, uniqueValues } from "../../utils/busAccess";
 import { getBusesByRole } from "../../services/busService";
 
@@ -20,7 +21,8 @@ function todayLabel() {
 
 export default function TodayBusesPage({ role }) {
   const [buses, setBuses] = useState([]);
-  useEffect(() => { getBusesByRole(role).then(setBuses); }, [role]);
+  const [error, setError] = useState("");
+  useEffect(() => { getBusesByRole(role).then(setBuses).catch((requestError) => setError(requestError.message)); }, [role]);
   const [query, setQuery] = useState("");
   const [destination, setDestination] = useState("all");
   const [category, setCategory] = useState("all");
@@ -68,14 +70,15 @@ export default function TodayBusesPage({ role }) {
           actions={<Badge tone="info">{todayLabel()}</Badge>}
         />
 
-        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        {error && <ErrorState title="Buses unavailable" message={error} />}
+        {!error && <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
             <label className="block xl:col-span-2">
-              <span className="mb-2 block text-sm font-semibold text-jaatra-ink">Search</span>
+              <span className="mb-2 block text-sm font-semibold text-safar-ink">Search</span>
               <span className="relative block">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-jaatra-gray" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-safar-gray" />
                 <input
-                  className="focus-ring h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-jaatra-ink"
+                  className="focus-ring h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-safar-ink"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search bus, route, stop"
@@ -110,14 +113,14 @@ export default function TodayBusesPage({ role }) {
               <option value="available">Seats available</option>
               <option value="limited">Limited seats</option>
             </Select>
-            <div className="flex items-center gap-2 text-sm font-semibold text-jaatra-gray">
-              <CalendarDays className="h-4 w-4 text-jaatra-teal" />
+            <div className="flex items-center gap-2 text-sm font-semibold text-safar-gray">
+              <CalendarDays className="h-4 w-4 text-safar-teal" />
               {filteredBuses.length} result{filteredBuses.length === 1 ? "" : "s"}
             </div>
           </div>
-        </section>
+        </section>}
 
-        {filteredBuses.length > 0 ? (
+        {!error && (filteredBuses.length > 0 ? (
           <section className="grid gap-4 xl:grid-cols-2">
             {filteredBuses.map((bus) => (
               <PortalBusCard key={bus.id} bus={bus} role={role} />
@@ -125,7 +128,7 @@ export default function TodayBusesPage({ role }) {
           </section>
         ) : (
           <EmptyState title="No buses match those filters" message="Try another destination, category, departure time, or seat filter." />
-        )}
+        ))}
       </div>
     </DashboardLayout>
   );

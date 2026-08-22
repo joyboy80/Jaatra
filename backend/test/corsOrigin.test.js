@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { isCorsOriginAllowed } from "../src/utils/corsOrigin.js";
 
-const allowedOrigins = ["https://jaatra.example.com"];
+const allowedOrigins = ["https://safar.example.com"];
 
 test("configured frontend origins are allowed", () => {
-  assert.equal(isCorsOriginAllowed("https://jaatra.example.com", {
+  assert.equal(isCorsOriginAllowed("https://safar.example.com", {
     allowedOrigins,
     nodeEnv: "production",
   }), true);

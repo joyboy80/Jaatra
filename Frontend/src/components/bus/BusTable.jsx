@@ -5,7 +5,7 @@ export default function BusTable({ buses }) {
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="overflow-x-auto">
         <table className="min-w-[780px] w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-jaatra-gray">
+          <thead className="bg-slate-50 text-xs uppercase text-safar-gray">
             <tr>
               <th className="px-4 py-3">Bus</th>
               <th className="px-4 py-3">Type</th>
@@ -18,10 +18,10 @@ export default function BusTable({ buses }) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {buses.map((bus) => (
-              <tr key={bus.id} className="text-jaatra-ink">
+              <tr key={bus.id} className="text-safar-ink">
                 <td className="px-4 py-3">
                   <div className="font-bold">{bus.name}</div>
-                  <div className="text-xs text-jaatra-gray">{bus.id} / {bus.number}</div>
+                  <div className="text-xs text-safar-gray">{bus.id} / {bus.number}</div>
                 </td>
                 <td className="px-4 py-3">{bus.type}</td>
                 <td className="px-4 py-3">{bus.route}</td>

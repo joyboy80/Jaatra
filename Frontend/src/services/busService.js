@@ -1,23 +1,21 @@
-import { buses } from "../data/buses.js";
-import { getBusForRole, getBusesForRole } from "../utils/busAccess.js";
-import { apiRequest, backendEnabled } from "./api.js";
+import { apiRequest } from "./api.js";
 
-export async function getBuses() {
-  if (backendEnabled) return (await apiRequest("/transport/buses")).buses;
-  return buses;
+function queryForDate(date) { return date ? `?date=${encodeURIComponent(date)}` : ""; }
+
+export async function getBuses(date) {
+  return (await apiRequest(`/transport/buses${queryForDate(date)}`)).buses;
 }
 
-export async function getBusById(id) {
-  if (backendEnabled) return (await apiRequest(`/transport/buses/${encodeURIComponent(id)}`)).bus;
-  return buses.find((bus) => bus.id === id);
+export async function getBusById(id, date) {
+  return (await apiRequest(`/transport/buses/${encodeURIComponent(id)}${queryForDate(date)}`)).bus;
 }
 
-export async function getBusesByRole(role) {
-  if (backendEnabled) return (await apiRequest("/transport/buses")).buses;
-  return getBusesForRole(role);
+export async function getBusesByRole(role, date) {
+  void role;
+  return getBuses(date);
 }
 
-export async function getBusByRole(role, id) {
-  if (backendEnabled) return (await apiRequest(`/transport/buses/${encodeURIComponent(id)}`)).bus;
-  return getBusForRole(role, id);
+export async function getBusByRole(role, id, date) {
+  void role;
+  return getBusById(id, date);
 }

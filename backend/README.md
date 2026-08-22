@@ -1,6 +1,6 @@
-# JAATRA Backend
+# SAFAR Backend
 
-Express API for JAATRA authentication and shared transport operations. Supabase Auth owns passwords and sessions; Supabase PostgreSQL stores profiles, server-only OTP hashes, fleet data, reservations, tickets, tracking, notifications, and operational records.
+Express API for SAFAR authentication and shared transport operations. Supabase Auth owns passwords and sessions; Supabase PostgreSQL stores profiles, server-only OTP hashes, fleet data, reservations, tickets, tracking, notifications, and operational records.
 
 ## Setup
 
@@ -8,9 +8,9 @@ Express API for JAATRA authentication and shared transport operations. Supabase 
 2. Copy `.env.example` to `.env` and enter the existing Supabase and SMTP credentials.
 3. Run the SQL files in order in the existing Supabase project's SQL editor:
    - `supabase/migrations/001_profiles.sql` for a fresh database.
-   - `supabase/migrations/002_complete_auth.sql` after the earlier JAATRA migration, or after `001` (it is safe to rerun the upgrade).
+   - `supabase/migrations/002_complete_auth.sql` after the earlier SAFAR migration, or after `001` (it is safe to rerun the upgrade).
    - `supabase/migrations/003_transport.sql` for fleet, schedules, reservations, tickets, tracking, notifications, Driver operations, and maintenance data.
-4. Start with `npm run dev`. The default API URL is `http://localhost:5000`.
+4. Apply `supabase/migrations/006_transport_schedule_schema.sql` for daily schedules and immediate Driver access, then start with `npm run dev`. The default API URL is `http://localhost:5000`.
 
 Never expose `SUPABASE_SECRET_KEY`, `SMTP_PASSWORD`, or `OTP_HASH_SECRET` in a `VITE_*` variable or commit `.env`.
 
@@ -68,13 +68,13 @@ Browser sessions use HttpOnly, `SameSite=Lax` access and refresh cookies. The AP
 | GET | `/api/student/` | Student |
 | GET | `/api/teacher/` | Teacher |
 | GET | `/api/staff/` | Staff |
-| GET | `/api/driver/` | Approved Driver |
+| GET | `/api/driver/` | Verified, active Driver |
 | GET | `/api/admin/` | Transport Admin |
 | GET | `/api/admin/drivers/pending` | Transport Admin |
 | PUT | `/api/admin/drivers/:id/approve` | Transport Admin |
 | PUT | `/api/admin/drivers/:id/reject` | Transport Admin |
 
-Authentication middleware verifies the token through Supabase, loads the server-owned profile, and rejects unverified, inactive, or unapproved Driver accounts. Role checks use `userType`; the legacy `role` response field exists only for compatibility and is never used for authorization.
+Authentication middleware verifies the token through Supabase, loads the server-owned profile, and rejects unverified or inactive accounts. Verified, active Drivers can access their portal immediately after signing in; `approval_status` is retained only for compatibility. Role checks use `userType`; the legacy `role` response field exists only for compatibility and is never used for authorization.
 
 ## Transport API
 

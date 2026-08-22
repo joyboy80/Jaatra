@@ -6,18 +6,21 @@ import Select from "../../components/common/Select";
 import PageHeader from "../../components/layout/PageHeader";
 import { useAuth } from "../../context/AuthContext";
 import DashboardLayout from "../../layouts/DashboardLayout";
-import { assignedBus, driverProfile, getCurrentTrip, sendEmergencyAlert } from "../../services/driverService";
+import { getCurrentTrip, sendEmergencyAlert } from "../../services/driverService";
 
 export default function EmergencyPage() {
-  const { setToast } = useAuth();
+  const { setToast, user } = useAuth();
   const [trip, setTrip] = useState(null);
   const [type, setType] = useState("Accident");
-  const [location, setLocation] = useState(assignedBus.currentLocation.label);
+  const [location, setLocation] = useState("");
   const [details, setDetails] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
-    getCurrentTrip().then(setTrip);
+    getCurrentTrip().then((currentTrip) => {
+      setTrip(currentTrip);
+      setLocation(currentTrip?.currentLocation || "");
+    });
   }, []);
 
   async function confirmEmergency() {
@@ -26,7 +29,7 @@ export default function EmergencyPage() {
       details,
       currentLocation: location,
       tripId: trip?.id,
-      busId: assignedBus.id,
+      busId: trip?.busId,
       route: trip?.route,
     });
     setConfirmOpen(false);
@@ -49,8 +52,8 @@ export default function EmergencyPage() {
             <div>
               <h2 className="font-bold text-red-900">Emergency details sent with every alert</h2>
               <div className="mt-3 grid gap-2 text-sm text-red-800 sm:grid-cols-2">
-                <p>Driver: {driverProfile.name} ({driverProfile.id})</p>
-                <p>Bus: {assignedBus.name} ({assignedBus.number})</p>
+                <p>Driver: {user.name} ({user.universityId || user.id})</p>
+                <p>Bus: {trip?.busName || "Unassigned"} ({trip?.busNumber || "—"})</p>
                 <p>Route: {trip?.route || "Loading trip"}</p>
                 <p className="flex items-center gap-1"><Clock3 className="h-4 w-4" /> Time recorded automatically</p>
               </div>
@@ -63,24 +66,24 @@ export default function EmergencyPage() {
             {['Accident', 'Medical Emergency', 'Bus Breakdown', 'Security Issue', 'Other'].map((item) => <option key={item}>{item}</option>)}
           </Select>
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-jaatra-ink">Current location</span>
+            <span className="mb-2 block text-sm font-semibold text-safar-ink">Current location</span>
             <span className="relative block">
               <MapPin className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-red-600" />
-              <input className="focus-ring h-11 w-full rounded-xl border border-slate-200 pl-10 pr-3 text-sm text-jaatra-ink" required value={location} onChange={(event) => setLocation(event.target.value)} />
+              <input className="focus-ring h-11 w-full rounded-xl border border-slate-200 pl-10 pr-3 text-sm text-safar-ink" required value={location} onChange={(event) => setLocation(event.target.value)} />
             </span>
           </label>
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-jaatra-ink">Additional details</span>
-            <textarea className="focus-ring min-h-28 w-full rounded-xl border border-slate-200 p-3 text-sm text-jaatra-ink" placeholder="Briefly describe what happened and any immediate risks" value={details} onChange={(event) => setDetails(event.target.value)} />
+            <span className="mb-2 block text-sm font-semibold text-safar-ink">Additional details</span>
+            <textarea className="focus-ring min-h-28 w-full rounded-xl border border-slate-200 p-3 text-sm text-safar-ink" placeholder="Briefly describe what happened and any immediate risks" value={details} onChange={(event) => setDetails(event.target.value)} />
           </label>
-          <Button className="min-h-14 w-full text-base" icon={Siren} type="submit" variant="danger">Send Emergency SOS</Button>
+          <Button className="min-h-14 w-full text-base" disabled={!trip} icon={Siren} type="submit" variant="danger">Send Emergency SOS</Button>
         </form>
       </div>
 
       <Modal
         open={confirmOpen}
         title={`Send ${type} alert?`}
-        description={`This will immediately notify transport authority about ${assignedBus.name} at ${location}.`}
+        description={`This will immediately notify transport authority about ${trip?.busName || "the assigned bus"} at ${location}.`}
         confirmLabel="Send SOS Now"
         danger
         onClose={() => setConfirmOpen(false)}

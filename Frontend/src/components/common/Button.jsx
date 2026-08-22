@@ -1,8 +1,8 @@
 const variants = {
-  primary: "bg-jaatra-teal text-white hover:bg-jaatra-navy hover:shadow-glow",
-  secondary: "bg-white text-jaatra-ink ring-1 ring-slate-200 hover:bg-jaatra-mint hover:text-jaatra-navy hover:ring-jaatra-teal/20",
-  danger: "bg-jaatra-red text-white hover:bg-red-700",
-  ghost: "bg-transparent text-jaatra-gray shadow-none hover:bg-jaatra-mint hover:text-jaatra-navy",
+  primary: "bg-gradient-to-r from-brand-maroon via-brand-purple to-brand-cyan text-white hover:shadow-float hover:-translate-y-0.5",
+  secondary: "bg-white text-safar-ink ring-1 ring-slate-200/60 shadow-sm hover:bg-slate-50 hover:shadow-float hover:-translate-y-0.5 dark:bg-slate-800 dark:ring-slate-700 dark:hover:bg-slate-750",
+  danger: "bg-gradient-to-r from-rose-500 to-red-600 text-white hover:shadow-float hover:-translate-y-0.5",
+  ghost: "bg-transparent text-safar-gray shadow-none hover:bg-slate-100 hover:text-safar-navy dark:hover:bg-slate-800",
 };
 
 export default function Button({
@@ -18,7 +18,7 @@ export default function Button({
   return (
     <button
       type={type}
-      className={`focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${variants[variant]} ${className}`}
+      className={`focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 active:scale-95 disabled:pointer-events-none disabled:opacity-60 ${variants[variant]} ${className}`}
       disabled={loading || disabled}
       {...props}
     >

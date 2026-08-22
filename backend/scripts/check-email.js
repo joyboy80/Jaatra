@@ -3,8 +3,8 @@ import { verifyEmailTransport } from "../src/services/emailService.js";
 
 try {
   await verifyEmailTransport({ requireConfigured: true });
-  console.log("JAATRA SMTP connection verified successfully.");
+  console.log("SAFAR SMTP connection verified successfully.");
 } catch (error) {
-  console.error(`JAATRA SMTP check failed: ${error.message}`);
+  console.error(`SAFAR SMTP check failed: ${error.message}`);
   process.exitCode = 1;
 }

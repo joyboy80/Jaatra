@@ -1,32 +1,45 @@
 import { useEffect, useState } from "react";
 import TicketCard from "../../components/ticket/TicketCard";
 import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
 import Modal from "../../components/common/Modal";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { useAuth } from "../../context/AuthContext";
 import { cancelReservation } from "../../services/reservationService";
-import { getTickets } from "../../services/ticketService";
+import { getTickets, downloadTicket, shareTicket } from "../../services/ticketService";
 
 export default function TicketsPage({ role }) {
   const { user, setToast } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [error, setError] = useState("");
 
   async function loadTickets() {
-    setTickets(await getTickets(user.id));
+    try { setTickets(await getTickets(user.id)); setError(""); } catch (requestError) { setError(requestError.message); }
   }
 
   useEffect(() => {
     loadTickets();
   }, [user.id]);
 
-  function handleDownload(ticket) {
-    setToast({ type: "info", message: `Download prepared for ${ticket.ticketId}.` });
+  async function handleDownload(ticket) {
+    try {
+      await downloadTicket(ticket.id);
+      setToast({ type: "success", message: "Ticket downloaded successfully." });
+    } catch (err) {
+      setToast({ type: "error", message: err.message });
+    }
   }
 
-  function handleShare(ticket) {
-    setToast({ type: "info", message: `Share link prepared for ${ticket.ticketId}.` });
+  async function handleShare(ticket) {
+    try {
+      const link = await shareTicket(ticket.id);
+      await navigator.clipboard.writeText(link);
+      setToast({ type: "success", message: "Share link copied to clipboard!" });
+    } catch (err) {
+      setToast({ type: "error", message: err.message });
+    }
   }
 
   async function confirmCancel() {
@@ -43,10 +56,10 @@ export default function TicketsPage({ role }) {
         <PageHeader
           eyebrow="Digital Tickets"
           title="My tickets"
-          description="Mobile-ready tickets with QR identifiers for future driver scanning."
+          description="Backend-issued tickets and identifiers for Driver verification."
         />
 
-        {tickets.length > 0 ? (
+        {error ? <ErrorState title="Tickets unavailable" message={error} /> : tickets.length > 0 ? (
           <section className="space-y-4">
             {tickets.map((ticket) => (
               <TicketCard
@@ -60,7 +73,7 @@ export default function TicketsPage({ role }) {
             ))}
           </section>
         ) : (
-          <EmptyState title="No tickets yet" message="Create a reservation to generate your first Jaatra ticket." />
+          <EmptyState title="No tickets yet" message="Create a reservation to generate your first Safar ticket." />
         )}
       </div>
 

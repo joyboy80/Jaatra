@@ -40,6 +40,8 @@ function assertEmail(email) {
 
 function resolveDepartment(input = {}) {
   const submitted = text(input.departmentCode || input.department);
+  if (!submitted) return { departmentCode: null, departmentName: null };
+  
   const code = Object.hasOwn(DEPARTMENTS, submitted)
     ? submitted
     : Object.entries(DEPARTMENTS).find(([, name]) => name.toLowerCase() === submitted.toLowerCase())?.[0];
@@ -141,6 +143,10 @@ export function validateResetPassword(input = {}) {
   return { password };
 }
 
+export function validatePasswordChange(input = {}) {
+  return validateResetPassword(input);
+}
+
 export function validateProfileUpdate(input = {}) {
   const forbidden = new Set([
     "role", "userType", "user_type", "authUserId", "auth_user_id", "email", "isVerified", "is_verified",
@@ -155,6 +161,7 @@ export function validateProfileUpdate(input = {}) {
   const updates = {};
   if (Object.hasOwn(input, "fullName")) updates.full_name = text(input.fullName);
   if (Object.hasOwn(input, "phone")) updates.phone = text(input.phone).replace(/[\s()-]/g, "") || null;
+  if (Object.hasOwn(input, "preferences")) updates.preferences = input.preferences;
   if (Object.hasOwn(input, "profileImage")) {
     const profileImage = text(input.profileImage);
     if (profileImage && (profileImage.length > 2048 || !/^https?:\/\//i.test(profileImage))) {
@@ -164,6 +171,7 @@ export function validateProfileUpdate(input = {}) {
   }
 
   if (!Object.keys(updates).length) throw new AppError(400, "No supported profile fields were provided.", "VALIDATION_ERROR");
+
   if (updates.full_name !== undefined && (updates.full_name.length < 2 || updates.full_name.length > 120)) {
     throw new AppError(400, "Full name must contain 2 to 120 characters.", "VALIDATION_ERROR");
   }

@@ -26,12 +26,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    const showApiError = (event) => {
+      setToast({ type: "error", message: event.detail?.message || "The backend request failed." });
+    };
+    window.addEventListener("safar:api-error", showApiError);
+    return () => window.removeEventListener("safar:api-error", showApiError);
+  }, []);
+
+  useEffect(() => {
     const expire = () => {
       setAuth(null);
       setToast({ type: "info", message: "Your session expired. Please sign in again." });
     };
-    window.addEventListener("jaatra:session-expired", expire);
-    return () => window.removeEventListener("jaatra:session-expired", expire);
+    window.addEventListener("safar:session-expired", expire);
+    return () => window.removeEventListener("safar:session-expired", expire);
   }, []);
 
   const value = useMemo(
@@ -45,16 +53,13 @@ export function AuthProvider({ children }) {
       async login(credentials) {
         const nextAuth = await authService.login(credentials);
         setAuth(nextAuth);
-        setToast({ type: "success", message: `Welcome to Jaatra, ${nextAuth.user.roleLabel}.` });
+        setToast({ type: "success", message: `Welcome to Safar, ${nextAuth.user.roleLabel}.` });
         return nextAuth;
       },
       async logout() {
-        try {
-          await authService.logout();
-        } finally {
-          setAuth(null);
-          setToast({ type: "info", message: "You have been signed out." });
-        }
+        await authService.logout();
+        setAuth(null);
+        setToast({ type: "info", message: "You have been signed out." });
       },
     }),
     [auth, isRestoring, toast]

@@ -3,6 +3,7 @@ import { getSupabaseAdmin, getSupabaseAuth } from "../config/supabase.js";
 import AppError from "../utils/AppError.js";
 import { issueRegistrationOtp } from "./otpService.js";
 import { createProfile, getProfileByAuthUserId, getProfileByEmail, serializeProfile, updateProfile } from "./profileService.js";
+import { assertProfilePortalAccess } from "../utils/driverAccess.js";
 
 function serializeSession(session) {
   if (!session) return null;
@@ -73,11 +74,7 @@ async function createOrRecoverAuthUser(admin, input) {
 async function rejectUnavailableProfile(profile, accessToken) {
   let error;
   if (!profile) error = new AppError(403, "No application profile is associated with this account.", "PROFILE_REQUIRED");
-  else if (!profile.is_verified) error = new AppError(403, "Verify your email before signing in.", "EMAIL_NOT_VERIFIED");
-  else if (!profile.is_active) error = new AppError(403, "This account has been deactivated.", "ACCOUNT_INACTIVE");
-  else if (profile.user_type === "DRIVER" && profile.approval_status !== "APPROVED") {
-    error = new AppError(403, profile.approval_status === "REJECTED" ? "This Driver account was rejected." : "This Driver account is awaiting Transport Admin approval.", profile.approval_status === "REJECTED" ? "DRIVER_REJECTED" : "DRIVER_PENDING_APPROVAL");
-  }
+  else { try { assertProfilePortalAccess(profile); } catch (accessError) { error = accessError; } }
   if (error) {
     if (accessToken) await getSupabaseAdmin().auth.admin.signOut(accessToken, "global").catch(() => undefined);
     throw error;
@@ -85,12 +82,23 @@ async function rejectUnavailableProfile(profile, accessToken) {
 }
 
 export async function registerUser(input) {
-  if (await getProfileByEmail(input.email)) throw new AppError(409, "An account with this email already exists.", "EMAIL_ALREADY_REGISTERED");
+  let profile = await getProfileByEmail(input.email);
+  if (profile) {
+    if (profile.is_verified) {
+      throw new AppError(409, "An account with this email already exists.", "EMAIL_ALREADY_REGISTERED");
+    }
+    
+    // User exists but is unverified. Update password just in case, then issue new OTP.
+    const admin = getSupabaseAdmin();
+    await admin.auth.admin.updateUserById(profile.auth_user_id, { password: input.password }).catch(() => {});
+    
+    const otp = await issueRegistrationOtp(input.email);
+    return { user: serializeProfile(profile), verification: otp, session: null };
+  }
 
   const admin = getSupabaseAdmin();
   const authAccount = await createOrRecoverAuthUser(admin, input);
 
-  let profile;
   try {
     profile = await createProfile({
       auth_user_id: authAccount.user.id,
@@ -105,7 +113,7 @@ export async function registerUser(input) {
       gender: input.gender,
       is_verified: false,
       is_active: true,
-      approval_status: input.userType === "DRIVER" ? "PENDING" : "APPROVED",
+      approval_status: "APPROVED",
       registration_status: "PENDING_VERIFICATION",
     });
   } catch (profileError) {
@@ -119,11 +127,20 @@ export async function registerUser(input) {
 
 export async function loginUser({ email, password }) {
   const { data, error } = await getSupabaseAuth().auth.signInWithPassword({ email, password });
-  if (error || !data.user || !data.session) throw authenticationError(error);
+  
+  if (error) {
+    if (error.code === "email_not_confirmed") {
+      await issueRegistrationOtp(email).catch(() => {});
+      throw new AppError(403, "Please verify your email address to continue.", "REQUIRES_VERIFICATION", { requires_verification: true });
+    }
+    throw authenticationError(error);
+  }
+  if (!data.user || !data.session) throw authenticationError(new Error("Missing session data"));
 
   const profile = await getProfileByAuthUserId(data.user.id);
   await rejectUnavailableProfile(profile, data.session.access_token);
-  return { user: serializeProfile(profile), session: serializeSession(data.session) };
+  const user = { ...serializeProfile(profile), preferences: data.user.user_metadata?.preferences || { email: true, push: true } };
+  return { user, session: serializeSession(data.session) };
 }
 
 export async function logoutUser(accessToken) {
@@ -137,7 +154,8 @@ export async function refreshUserSession(refreshToken) {
 
   const profile = await getProfileByAuthUserId(data.user.id);
   await rejectUnavailableProfile(profile, data.session.access_token);
-  return { user: serializeProfile(profile), session: serializeSession(data.session) };
+  const user = { ...serializeProfile(profile), preferences: data.user.user_metadata?.preferences || { email: true, push: true } };
+  return { user, session: serializeSession(data.session) };
 }
 
 export async function requestPasswordReset(email) {

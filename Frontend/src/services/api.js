@@ -1,13 +1,16 @@
-const configuredUrl = import.meta.env.VITE_API_URL?.trim() || "";
+const configuredUrl = import.meta.env.VITE_API_URL?.trim() || "/api";
 
-export const backendEnabled = Boolean(configuredUrl);
 export const API_BASE_URL = configuredUrl.replace(/\/$/, "");
 let refreshRequest = null;
 
+function notifyApiError(error) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("safar:api-error", { detail: error }));
+  }
+}
+
 function notifySessionExpired() {
-  localStorage.removeItem("jaatra.auth");
-  sessionStorage.removeItem("jaatra.auth");
-  window.dispatchEvent(new Event("jaatra:session-expired"));
+  window.dispatchEvent(new Event("safar:session-expired"));
 }
 
 function refreshSession() {
@@ -22,19 +25,25 @@ function refreshSession() {
 }
 
 export async function apiRequest(path, { method = "GET", body, token, signal, retryOnUnauthorized = true } = {}) {
-  if (!backendEnabled) throw new Error("The Jaatra backend is not configured. Set VITE_API_URL.");
-
-  const response = await fetch(`${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
-    method,
-    signal,
-    credentials: "include",
-    headers: {
-      Accept: "application/json",
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+      method,
+      signal,
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch (cause) {
+    const error = new Error("The SAFAR backend could not be reached.", { cause });
+    error.code = "NETWORK_ERROR";
+    notifyApiError(error);
+    throw error;
+  }
 
   if (response.status === 401 && retryOnUnauthorized && !path.startsWith("/auth/")) {
     const refreshed = await refreshSession();
@@ -48,6 +57,7 @@ export async function apiRequest(path, { method = "GET", body, token, signal, re
     error.status = response.status;
     error.code = payload?.error?.code || "API_ERROR";
     error.details = payload?.error?.details;
+    notifyApiError(error);
     throw error;
   }
 

@@ -10,6 +10,7 @@ import AppError from "./utils/AppError.js";
 import transportRoutes from "./routes/transportRoutes.js";
 import driverTransportRoutes from "./routes/driverTransportRoutes.js";
 import adminTransportRoutes from "./routes/adminTransportRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 import { isCorsOriginAllowed } from "./utils/corsOrigin.js";
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/transport", transportRoutes);
 app.use("/api/driver/transport", driverTransportRoutes);
 app.use("/api/admin/transport", adminTransportRoutes);
+app.use("/api/ai", aiRoutes);
 app.use("/api/student", studentRouter);
 app.use("/api/teacher", teacherRouter);
 app.use("/api/staff", staffRouter);

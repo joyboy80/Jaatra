@@ -54,7 +54,7 @@ test("public session metadata never contains bearer credentials", () => {
 });
 
 test("session cookies can be parsed and cleared", () => {
-  const req = { headers: { cookie: `${ACCESS_COOKIE}=abc; ${REFRESH_COOKIE}=def; jaatra_remember=1` } };
+  const req = { headers: { cookie: `${ACCESS_COOKIE}=abc; ${REFRESH_COOKIE}=def; safar_remember=1` } };
   assert.equal(readCookie(req.headers.cookie, ACCESS_COOKIE), "abc");
   assert.deepEqual(readSessionCookies(req), { accessToken: "abc", refreshToken: "def", remember: true });
   const res = response();

@@ -21,26 +21,28 @@ export default function Navbar({ user, onMenu }) {
   ), [user.id, user.role]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur-xl lg:px-8">
-      <div className="flex items-center gap-3">
-        <button className="focus-ring icon-button lg:hidden" onClick={onMenu} aria-label="Open navigation">
+    <header className="sticky top-0 z-30 mb-6 bg-white/70 px-4 py-3 backdrop-blur-xl border-b border-slate-200/50 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/50 lg:px-8 transition-colors duration-300">
+      <div className="flex items-center gap-4">
+        <button className="focus-ring icon-button rounded-full lg:hidden" onClick={onMenu} aria-label="Open navigation">
           <Menu className="h-5 w-5" />
         </button>
-        <div className="relative hidden min-w-0 flex-1 sm:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-jaatra-gray" />
+        <div className="relative hidden min-w-0 flex-1 sm:block max-w-md">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-safar-gray" />
           <input
-            className="focus-ring h-10 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm text-jaatra-ink transition hover:border-jaatra-teal/30"
-            placeholder="Search buses, routes, tickets"
+            className="focus-ring h-11 w-full rounded-full border border-slate-200 bg-slate-50/50 pl-11 pr-4 text-sm text-safar-ink shadow-inner transition hover:border-safar-teal/40 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800 dark:hover:border-safar-teal/40"
+            placeholder="Search buses, routes, tickets..."
           />
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          <Badge tone="info">{user.roleLabel}</Badge>
+        <div className="ml-auto flex items-center gap-2 sm:gap-4">
+          <div className="hidden sm:block">
+            <Badge tone="info">{user.roleLabel}</Badge>
+          </div>
           <ThemeToggle compact />
-          <Link className="focus-ring icon-button relative" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`} to={`/${user.role}/notifications`}>
+          <Link className="focus-ring icon-button rounded-full relative" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`} to={`/${user.role}/notifications`}>
             <Bell className="h-5 w-5" />
-            {unreadCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-jaatra-red px-1 text-[10px] font-bold text-white ring-2 ring-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}
+            {unreadCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand-crimson px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse">{unreadCount > 9 ? "9+" : unreadCount}</span>}
           </Link>
-          <div className="grid h-10 w-10 place-items-center rounded-lg bg-jaatra-teal text-sm font-bold text-white shadow-glow" title={user.name}>
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-maroon via-brand-purple to-brand-cyan text-sm font-bold text-white shadow-md cursor-pointer hover:shadow-glow transition duration-300 transform hover:scale-105" title={user.name}>
             {initials || "JU"}
           </div>
         </div>

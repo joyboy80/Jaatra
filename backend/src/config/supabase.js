@@ -26,7 +26,7 @@ export function getSupabaseAdmin() {
 
 export async function verifySupabaseConnection() {
   const admin = getSupabaseAdmin();
-  const [{ error: profileError }, { error: verificationError }, { error: transportError }] = await Promise.all([
+  const [{ error: profileError }, { error: verificationError }, { error: transportError }, { error: assignmentError }] = await Promise.all([
     admin.from("profiles").select([
       "id",
       "auth_user_id",
@@ -47,11 +47,13 @@ export async function verifySupabaseConnection() {
     ].join(",")).limit(1),
     admin.from("email_verifications").select("id").limit(1),
     admin.from("buses").select("id").limit(1),
+    admin.from("transport_assignments").select("id").limit(1),
   ]);
   if (profileError || verificationError) {
     const message = profileError?.message || verificationError?.message;
     throw new Error(`Supabase authentication schema is outdated. Run migration 002_complete_auth.sql: ${message}`);
   }
   if (transportError) throw new Error(`Supabase transport check failed. Run migration 003_transport.sql: ${transportError.message}`);
+  if (assignmentError) throw new Error(`Supabase daily assignment schema is outdated. Run migrations 004_daily_shift_assignments.sql and 005_driver_access_without_approval.sql: ${assignmentError.message}`);
   return true;
 }

@@ -9,11 +9,13 @@ import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { useAuth } from "../../context/AuthContext";
 import { addDays, formatDisplayDate, toDateInputValue } from "../../utils/date";
-import { createReservation, getReservedSeats } from "../../services/reservationService";
+import { createReservation, getReservedSeats, getReservations } from "../../services/reservationService";
 import { getUnavailableSeatsForCapacity } from "../../utils/seats";
 import { getBusesByRole } from "../../services/busService";
 import { getSchedules } from "../../services/scheduleService";
 import Loading from "../../components/common/Loading";
+import ErrorState from "../../components/common/ErrorState";
+import EmptyState from "../../components/common/EmptyState";
 
 export default function ReservationFlowPage({ role }) {
   const { user, setToast } = useAuth();
@@ -29,6 +31,7 @@ export default function ReservationFlowPage({ role }) {
   const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [myReservations, setMyReservations] = useState([]);
 
   const selectedBus = buses.find((bus) => bus.id === busId);
   const trips = useMemo(() => allTrips.filter((trip) => trip.busId === busId), [allTrips, busId]);
@@ -39,11 +42,13 @@ export default function ReservationFlowPage({ role }) {
   );
 
   useEffect(() => {
-    Promise.all([getBusesByRole(role), getSchedules()]).then(([busData, tripData]) => {
+    Promise.all([getBusesByRole(role, date), getSchedules(date), getReservations(user.id)]).then(([busData, tripData, reservationsData]) => {
       setBuses(busData);
       setAllTrips(tripData.filter((trip) => busData.some((bus) => bus.id === trip.busId)));
-      setBusId((current) => current || busData[0]?.id || "");
-    }).finally(() => setLoading(false));
+      setMyReservations(reservationsData.filter(r => r.status !== "Cancelled"));
+      setBusId((current) => busData.some((bus) => bus.id === current) ? current : busData[0]?.id || "");
+      setTripId("");
+    }).catch((requestError) => setError(requestError.message)).finally(() => setLoading(false));
   }, [role]);
 
   useEffect(() => {
@@ -65,9 +70,11 @@ export default function ReservationFlowPage({ role }) {
 
   if (loading) return <DashboardLayout><Loading label="Loading available trips" /></DashboardLayout>;
 
-  if (!selectedBus) {
-    return <Navigate to={`/${role}/today-buses`} replace />;
-  }
+  if (error && !buses.length) return <DashboardLayout><ErrorState title="Reservation service unavailable" message={error} /></DashboardLayout>;
+
+  if (!selectedBus) return <DashboardLayout><EmptyState title="No scheduled buses for this date" message="Choose another date or check back after Transport Admin publishes an eligible schedule." /></DashboardLayout>;
+
+  const existingBooking = selectedTrip ? myReservations.find(r => r.tripId === selectedTrip.id && r.date === date) : null;
 
   async function handleConfirm() {
     setError("");
@@ -108,21 +115,21 @@ export default function ReservationFlowPage({ role }) {
           <section className="rounded-xl border-t-4 border-emerald-500 bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <CheckCircle2 className="h-12 w-12 text-emerald-600" />
             <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-              <div><dt className="font-semibold text-jaatra-gray">Booking ID</dt><dd className="mt-1 break-all text-jaatra-ink">{result.reservation.bookingId}</dd></div>
-              <div><dt className="font-semibold text-jaatra-gray">Ticket ID</dt><dd className="mt-1 break-all text-jaatra-ink">{result.ticket.ticketId}</dd></div>
-              <div><dt className="font-semibold text-jaatra-gray">Bus</dt><dd className="mt-1 text-jaatra-ink">{result.reservation.busName}</dd></div>
-              <div><dt className="font-semibold text-jaatra-gray">Seat</dt><dd className="mt-1 text-jaatra-ink">{result.reservation.seatNumber}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Booking ID</dt><dd className="mt-1 break-all text-safar-ink">{result.reservation.bookingId}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Ticket ID</dt><dd className="mt-1 break-all text-safar-ink">{result.ticket.ticketId}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Bus</dt><dd className="mt-1 text-safar-ink">{result.reservation.busName}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Seat</dt><dd className="mt-1 text-safar-ink">{result.reservation.seatNumber}</dd></div>
             </dl>
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
               <Link
-                className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-jaatra-teal px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-jaatra-navy"
+                className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-safar-teal px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-safar-navy"
                 to={`/${role}/tickets/${result.ticket.ticketId}`}
               >
                 <Ticket className="h-4 w-4" />
                 View Ticket
               </Link>
               <Link
-                className="focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-jaatra-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+                className="focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                 to={`/${role}/reservations`}
               >
                 Reservation History
@@ -158,9 +165,9 @@ export default function ReservationFlowPage({ role }) {
               ))}
             </Select>
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-jaatra-ink">Select Date</span>
+              <span className="mb-2 block text-sm font-semibold text-safar-ink">Select Date</span>
               <input
-                className="focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-jaatra-ink"
+                className="focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-safar-ink"
                 type="date"
                 min={toDateInputValue()}
                 max={addDays(7)}
@@ -189,28 +196,46 @@ export default function ReservationFlowPage({ role }) {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1fr_0.8fr]">
-          <SeatMap
-            selectedSeat={selectedSeat}
-            reservedSeats={reservedSeats}
-            unavailableSeats={unavailableSeats}
-            onSelectSeat={setSelectedSeat}
-          />
+          {existingBooking ? (
+            <div className="flex flex-col items-center justify-center rounded-xl bg-slate-50 p-8 text-center ring-1 ring-slate-200">
+              <div className="mb-4 rounded-full bg-safar-teal/10 p-4">
+                <Ticket className="h-10 w-10 text-safar-teal" />
+              </div>
+              <h3 className="mb-2 text-lg font-bold text-safar-ink">You have already booked a ticket for this departure.</h3>
+              <p className="mb-6 max-w-sm text-sm text-safar-gray">
+                Students are limited to one ticket per departure to ensure fair access.
+              </p>
+              <Link
+                to={`/${role}/tickets/${existingBooking.ticketId}`}
+                className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-safar-teal px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-safar-navy"
+              >
+                View Ticket & Invoice
+              </Link>
+            </div>
+          ) : (
+            <SeatMap
+              selectedSeat={selectedSeat}
+              reservedSeats={reservedSeats}
+              unavailableSeats={unavailableSeats}
+              onSelectSeat={setSelectedSeat}
+            />
+          )}
 
-          <div className="rounded-xl border-t-4 border-jaatra-teal bg-white p-5 shadow-sm ring-1 ring-slate-200 xl:sticky xl:top-24 xl:self-start">
+          <div className="rounded-xl border-t-4 border-safar-teal bg-white p-5 shadow-sm ring-1 ring-slate-200 xl:sticky xl:top-24 xl:self-start">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-bold text-jaatra-ink">Reservation Summary</h2>
+              <h2 className="text-lg font-bold text-safar-ink">Reservation Summary</h2>
               <Badge tone={selectedSeat ? "success" : "warning"}>{selectedSeat || "No seat"}</Badge>
             </div>
             <dl className="mt-5 space-y-3 text-sm">
-              <div><dt className="font-semibold text-jaatra-gray">Passenger</dt><dd className="mt-1 text-jaatra-ink">{user.name}</dd></div>
-              <div><dt className="font-semibold text-jaatra-gray">University ID</dt><dd className="mt-1 text-jaatra-ink">{user.universityId || user.id}</dd></div>
-              <div><dt className="font-semibold text-jaatra-gray">Bus</dt><dd className="mt-1 text-jaatra-ink">{selectedTrip?.busName}</dd></div>
-              <div><dt className="font-semibold text-jaatra-gray">Bus Category</dt><dd className="mt-1 text-jaatra-ink">{selectedTrip?.busCategory}</dd></div>
-              <div><dt className="font-semibold text-jaatra-gray">Route</dt><dd className="mt-1 text-jaatra-ink">{selectedTrip?.route}</dd></div>
-              <div><dt className="font-semibold text-jaatra-gray">Date</dt><dd className="mt-1 text-jaatra-ink">{formatDisplayDate(date)}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Passenger</dt><dd className="mt-1 text-safar-ink">{user.name}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">University ID</dt><dd className="mt-1 text-safar-ink">{user.universityId || user.id}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Bus</dt><dd className="mt-1 text-safar-ink">{selectedTrip?.busName}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Bus Category</dt><dd className="mt-1 text-safar-ink">{selectedTrip?.busCategory}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Route</dt><dd className="mt-1 text-safar-ink">{selectedTrip?.route}</dd></div>
+              <div><dt className="font-semibold text-safar-gray">Date</dt><dd className="mt-1 text-safar-ink">{formatDisplayDate(date)}</dd></div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-jaatra-teal" />{selectedTrip?.departureTime}</div>
-                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-jaatra-teal" />{selectedTrip?.arrivalTime}</div>
+                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-safar-teal" />{selectedTrip?.departureTime}</div>
+                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-safar-teal" />{selectedTrip?.arrivalTime}</div>
               </div>
             </dl>
             {error && (
@@ -221,12 +246,12 @@ export default function ReservationFlowPage({ role }) {
             )}
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
               <Link
-                className="focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-jaatra-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+                className="focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                 to={`/${role}/today-buses`}
               >
                 Cancel
               </Link>
-              <Button loading={confirming} disabled={!selectedSeat} onClick={handleConfirm}>
+              <Button loading={confirming} disabled={!selectedSeat || !!existingBooking} onClick={handleConfirm}>
                 Confirm Reservation
               </Button>
             </div>

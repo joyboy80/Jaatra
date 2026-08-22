@@ -5,7 +5,7 @@ import Button from "../../components/common/Button";
 import { useAuth } from "../../context/AuthContext";
 import { sendOtp, verifyOtp } from "../../services/authService";
 
-const inputClass = "focus-ring mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-3 text-center text-lg font-bold tracking-[0.35em] text-jaatra-ink";
+const inputClass = "focus-ring mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-3 text-center text-lg font-bold tracking-[0.35em] text-safar-ink";
 
 export default function VerifyOtpPage() {
   const [params] = useSearchParams();
@@ -33,9 +33,7 @@ export default function VerifyOtpPage() {
     setError("");
     try {
       const result = await verifyOtp(email, otp);
-      const message = result.requiresApproval
-        ? "Email verified. Your Driver account is awaiting Transport Admin approval."
-        : "Email verified. You can now sign in.";
+      const message = "Email verified. You can now sign in.";
       setToast({ type: "success", message });
       navigate("/login", { replace: true, state: { message } });
     } catch (requestError) {
@@ -69,8 +67,8 @@ export default function VerifyOtpPage() {
         <label className="block"><span className="text-sm font-semibold">Verification code</span><input className={inputClass} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" required /></label>
         <Button className="mt-5 w-full" type="submit" loading={loading} disabled={otp.length !== 6}>Verify email</Button>
       </form>
-      <div className="mt-5 text-center text-sm"><button className="font-semibold text-jaatra-teal disabled:text-jaatra-gray" type="button" disabled={!email || seconds > 0 || resending} onClick={resend}>{seconds > 0 ? `Resend in ${seconds}s` : resending ? "Sending…" : "Resend code"}</button></div>
-      <p className="mt-5 text-center text-sm text-jaatra-gray"><Link className="font-semibold text-jaatra-teal" to="/login">Back to sign in</Link></p>
+      <div className="mt-5 text-center text-sm"><button className="font-semibold text-safar-teal disabled:text-safar-gray" type="button" disabled={!email || seconds > 0 || resending} onClick={resend}>{seconds > 0 ? `Resend in ${seconds}s` : resending ? "Sending…" : "Resend code"}</button></div>
+      <p className="mt-5 text-center text-sm text-safar-gray"><Link className="font-semibold text-safar-teal" to="/login">Back to sign in</Link></p>
     </AuthPageShell>
   );
 }

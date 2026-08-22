@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../../components/common/Badge";
 import Button from "../../components/common/Button";
+import ErrorState from "../../components/common/ErrorState";
 import Modal from "../../components/common/Modal";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
@@ -24,9 +25,10 @@ export default function ReservationsPage({ role }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [reservations, setReservations] = useState([]);
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [error, setError] = useState("");
 
   async function loadReservations() {
-    setReservations(await getReservations(user.id));
+    try { setReservations(await getReservations(user.id)); setError(""); } catch (requestError) { setError(requestError.message); }
   }
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function ReservationsPage({ role }) {
           description="Review upcoming, active, completed, and cancelled reservations."
           actions={
             <Link
-              className="focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-jaatra-teal px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-jaatra-navy"
+              className="focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-safar-teal px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-safar-navy"
               to={`/${role}/reservations/new`}
             >
               New Reservation
@@ -63,12 +65,14 @@ export default function ReservationsPage({ role }) {
           }
         />
 
-        <div className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
+        {error && <ErrorState title="Reservations unavailable" message={error} />}
+
+        {!error && <><div className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
           {tabs.map((tab) => (
             <button
               key={tab}
               className={`focus-ring min-h-10 shrink-0 rounded-xl px-4 text-sm font-semibold transition ${
-                activeTab === tab ? "bg-jaatra-teal text-white" : "text-jaatra-gray hover:bg-slate-100 hover:text-jaatra-ink"
+                activeTab === tab ? "bg-safar-teal text-white" : "text-safar-gray hover:bg-slate-100 hover:text-safar-ink"
               }`}
               onClick={() => setActiveTab(tab)}
               type="button"
@@ -87,11 +91,11 @@ export default function ReservationsPage({ role }) {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-lg font-bold text-jaatra-ink">{reservation.busName}</h2>
+                      <h2 className="text-lg font-bold text-safar-ink">{reservation.busName}</h2>
                       <Badge tone={toneForState(state)}>{state}</Badge>
                     </div>
-                    <p className="mt-1 text-sm text-jaatra-gray">{reservation.route}</p>
-                    <div className="mt-3 grid gap-2 text-sm text-jaatra-gray sm:grid-cols-2 lg:grid-cols-4">
+                    <p className="mt-1 text-sm text-safar-gray">{reservation.route}</p>
+                    <div className="mt-3 grid gap-2 text-sm text-safar-gray sm:grid-cols-2 lg:grid-cols-4">
                       <span>{reservation.date}</span>
                       <span>
                         {reservation.departureTime} - {reservation.arrivalTime}
@@ -102,7 +106,7 @@ export default function ReservationsPage({ role }) {
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 lg:min-w-72">
                     <Link
-                      className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-jaatra-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+                      className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                       to={`/${role}/tickets/${reservation.ticketId}`}
                     >
                       <Eye className="h-4 w-4" />
@@ -122,11 +126,11 @@ export default function ReservationsPage({ role }) {
             );
           })}
           {visibleReservations.length === 0 && (
-            <div className="rounded-2xl bg-white p-8 text-center text-sm font-semibold text-jaatra-gray shadow-sm ring-1 ring-slate-200">
+            <div className="rounded-2xl bg-white p-8 text-center text-sm font-semibold text-safar-gray shadow-sm ring-1 ring-slate-200">
               No {activeTab.toLowerCase()} reservations yet.
             </div>
           )}
-        </section>
+        </section></>}
       </div>
 
       <Modal

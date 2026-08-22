@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-const STORAGE_KEY = "jaatra.theme";
+const STORAGE_KEY = "safar.theme";
 const ThemeContext = createContext(null);
 
 function getStoredTheme() {

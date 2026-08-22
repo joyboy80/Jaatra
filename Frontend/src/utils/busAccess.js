@@ -1,4 +1,3 @@
-import { buses } from "../data/buses.js";
 import { ROLES } from "./roles.js";
 
 export const busCategoriesByRole = {
@@ -9,15 +8,6 @@ export const busCategoriesByRole = {
 
 export function getAllowedBusCategories(role) {
   return busCategoriesByRole[role] || [];
-}
-
-export function getBusesForRole(role) {
-  const allowedCategories = getAllowedBusCategories(role);
-  return buses.filter((bus) => allowedCategories.includes(bus.type));
-}
-
-export function getBusForRole(role, id) {
-  return getBusesForRole(role).find((bus) => bus.id === id);
 }
 
 export function getRoleBusLabel(role) {

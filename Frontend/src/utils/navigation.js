@@ -29,7 +29,7 @@ const sharedCampusNav = [
   { label: "My Tickets", path: "tickets", icon: Ticket },
   { label: "Live Tracking", path: "tracking", icon: MapPinned },
   { label: "Notifications", path: "notifications", icon: Bell },
-  { label: "Jaatra AI", path: "ai", icon: Bot },
+  { label: "Safar AI", path: "ai", icon: Bot },
   { label: "Profile", path: "profile", icon: User },
   { label: "Settings", path: "settings", icon: Settings },
 ];

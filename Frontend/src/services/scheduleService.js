@@ -1,7 +1,6 @@
-import { trips } from "../data/trips.js";
-import { apiRequest, backendEnabled } from "./api.js";
+import { apiRequest } from "./api.js";
 
-export async function getSchedules() {
-  if (backendEnabled) return (await apiRequest("/transport/trips")).trips;
-  return trips;
+export async function getSchedules(date) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : "";
+  return (await apiRequest(`/transport/trips${query}`)).trips;
 }

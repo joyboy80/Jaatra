@@ -1,6 +1,8 @@
 import { Search, UserCheck, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Badge from "../../components/common/Badge";
+import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
 import Select from "../../components/common/Select";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
@@ -29,6 +31,7 @@ export default function PassengerListPage() {
   const [passengers, setPassengers] = useState([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function loadTrips() {
@@ -37,12 +40,12 @@ export default function PassengerListPage() {
       setTripId(currentTrip?.id || "");
     }
 
-    loadTrips();
+    loadTrips().catch((requestError) => setError(requestError.message));
   }, []);
 
   useEffect(() => {
     if (!tripId) return;
-    getPassengerManifest(tripId).then(setPassengers);
+    getPassengerManifest(tripId).then((items) => { setPassengers(items); setError(""); }).catch((requestError) => setError(requestError.message));
   }, [tripId]);
 
   const visiblePassengers = useMemo(() => {
@@ -68,18 +71,21 @@ export default function PassengerListPage() {
           description={`${boarded} of ${passengers.filter((item) => item.boardingStatus !== "Cancelled").length} passengers boarded.`}
         />
 
-        <section className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 lg:grid-cols-[1fr_1.4fr_0.8fr]">
+        {error && <ErrorState title="Passenger manifest unavailable" message={error} />}
+        {!error && !tripId && <EmptyState title="No assigned trip" message="A passenger manifest will appear when the backend assigns a trip." />}
+
+        {!error && tripId && <><section className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 lg:grid-cols-[1fr_1.4fr_0.8fr]">
           <Select label="Trip" value={tripId} onChange={(event) => setTripId(event.target.value)}>
             {trips.map((trip) => (
               <option key={trip.id} value={trip.id}>{trip.departureTime} - {trip.route}</option>
             ))}
           </Select>
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-jaatra-ink">Search passenger or student ID</span>
+            <span className="mb-2 block text-sm font-semibold text-safar-ink">Search passenger or student ID</span>
             <span className="relative block">
-              <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-jaatra-gray" />
+              <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-safar-gray" />
               <input
-                className="focus-ring h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-jaatra-ink"
+                className="focus-ring h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-safar-ink"
                 placeholder="Name, university ID, or seat"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -94,7 +100,7 @@ export default function PassengerListPage() {
         <section className="hidden overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-bold uppercase text-jaatra-gray">
+              <thead className="bg-slate-50 text-xs font-bold uppercase text-safar-gray">
                 <tr>
                   <th className="px-4 py-3">Passenger</th>
                   <th className="px-4 py-3">University ID</th>
@@ -106,10 +112,10 @@ export default function PassengerListPage() {
               <tbody className="divide-y divide-slate-100">
                 {visiblePassengers.map((passenger) => (
                   <tr key={passenger.ticketId}>
-                    <td className="px-4 py-4 font-semibold text-jaatra-ink">{passenger.passengerName}</td>
-                    <td className="px-4 py-4 text-jaatra-gray">{passenger.universityId}</td>
-                    <td className="px-4 py-4 text-jaatra-gray">{passenger.roleLabel}</td>
-                    <td className="px-4 py-4 font-bold text-jaatra-ink">{passenger.seatNumber}</td>
+                    <td className="px-4 py-4 font-semibold text-safar-ink">{passenger.passengerName}</td>
+                    <td className="px-4 py-4 text-safar-gray">{passenger.universityId}</td>
+                    <td className="px-4 py-4 text-safar-gray">{passenger.roleLabel}</td>
+                    <td className="px-4 py-4 font-bold text-safar-ink">{passenger.seatNumber}</td>
                     <td className="px-4 py-4"><PassengerStatus passenger={passenger} /></td>
                   </tr>
                 ))}
@@ -123,15 +129,15 @@ export default function PassengerListPage() {
             <article key={passenger.ticketId} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-jaatra-sky">
-                    {passenger.boardingStatus === "Boarded" ? <UserCheck className="h-5 w-5 text-jaatra-teal" /> : <Users className="h-5 w-5 text-jaatra-gray" />}
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-safar-sky">
+                    {passenger.boardingStatus === "Boarded" ? <UserCheck className="h-5 w-5 text-safar-teal" /> : <Users className="h-5 w-5 text-safar-gray" />}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="truncate font-bold text-jaatra-ink">{passenger.passengerName}</h2>
-                    <p className="text-sm text-jaatra-gray">{passenger.universityId} | {passenger.roleLabel}</p>
+                    <h2 className="truncate font-bold text-safar-ink">{passenger.passengerName}</h2>
+                    <p className="text-sm text-safar-gray">{passenger.universityId} | {passenger.roleLabel}</p>
                   </div>
                 </div>
-                <span className="text-lg font-bold text-jaatra-ink">{passenger.seatNumber}</span>
+                <span className="text-lg font-bold text-safar-ink">{passenger.seatNumber}</span>
               </div>
               <div className="mt-4"><PassengerStatus passenger={passenger} /></div>
             </article>
@@ -139,10 +145,11 @@ export default function PassengerListPage() {
         </section>
 
         {visiblePassengers.length === 0 && (
-          <div className="rounded-2xl bg-white p-8 text-center text-sm font-semibold text-jaatra-gray shadow-sm ring-1 ring-slate-200">
+          <div className="rounded-2xl bg-white p-8 text-center text-sm font-semibold text-safar-gray shadow-sm ring-1 ring-slate-200">
             No passengers match this search and status filter.
           </div>
         )}
+        </>}
       </div>
     </DashboardLayout>
   );

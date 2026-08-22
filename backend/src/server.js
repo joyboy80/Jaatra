@@ -8,10 +8,10 @@ async function startServer() {
     validateEnvironment();
     await verifySupabaseConnection();
     app.listen(env.port, () => {
-      console.log(`Jaatra backend listening on http://localhost:${env.port}`);
+      console.log(`Safar backend listening on http://localhost:${env.port}`);
     });
   } catch (error) {
-    console.error(`Jaatra backend failed to start: ${error.message}`);
+    console.error(`Safar backend failed to start: ${error.message}`);
     process.exitCode = 1;
   }
 }

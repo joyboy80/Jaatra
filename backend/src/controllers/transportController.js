@@ -1,11 +1,13 @@
 import {
   adminAnalytics,
+  adminAssignments,
   adminBuses,
   adminDrivers,
   adminOverview,
   adminSchedules,
   adminUsers,
   cancelReservation,
+  cancelAdminAssignment,
   clearNotifications,
   createDriverReport,
   deleteAdminBus,
@@ -29,6 +31,7 @@ import {
   saveAdminBus,
   saveAdminRoute,
   saveAdminSchedule,
+  saveAdminAssignment,
   tripSummary,
   updateAdminDriver,
   updateAdminUser,
@@ -37,6 +40,8 @@ import {
   updateMaintenance,
   verifyDriverTicket,
 } from "../services/transportService.js";
+import { getOccupancyPredictions, getSmartTransportationInsights } from "../services/predictionService.js";
+import { getBusAllocationRecommendations } from "../services/recommendationService.js";
 import AppError from "../utils/AppError.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/response.js";
@@ -56,26 +61,163 @@ function reservationInput(body = {}) {
   return { tripId, date, seatNumber };
 }
 
-export const buses = asyncHandler(async (req, res) => sendSuccess(res, { data: { buses: await listBuses(req.user.userType) } }));
+export const buses = asyncHandler(async (req, res) => sendSuccess(res, { data: { buses: await listBuses(req.user, undefined, req.query.date) } }));
 export const bus = asyncHandler(async (req, res) => {
-  const result = await listBuses(req.user.userType, req.params.id);
+  const result = await listBuses(req.user, req.params.id, req.query.date);
   if (!result) throw new AppError(404, "Bus not found or unavailable for this role.", "BUS_NOT_FOUND");
   return sendSuccess(res, { data: { bus: result } });
 });
 export const routes = asyncHandler(async (_req, res) => sendSuccess(res, { data: { routes: await listRoutes() } }));
-export const trips = asyncHandler(async (req, res) => sendSuccess(res, { data: { trips: await listTrips(req.user.userType) } }));
+export const trips = asyncHandler(async (req, res) => sendSuccess(res, { data: { trips: await listTrips(req.user, req.query.date) } }));
 export const reservations = asyncHandler(async (req, res) => sendSuccess(res, { data: { reservations: await listReservations(req.user.profileId) } }));
-export const seats = asyncHandler(async (req, res) => sendSuccess(res, { data: { seats: await reservedSeats(text(req.query.tripId, "Trip"), text(req.query.date, "Travel date")) } }));
+export const seats = asyncHandler(async (req, res) => sendSuccess(res, { data: { seats: await reservedSeats(req.user, text(req.query.tripId, "Trip"), text(req.query.date, "Travel date")) } }));
 export const createReservation = asyncHandler(async (req, res) => sendSuccess(res, { status: 201, data: await reserveSeat(req.user.profileId, reservationInput(req.body)), message: "Reservation confirmed." }));
 export const removeReservation = asyncHandler(async (req, res) => sendSuccess(res, { data: { reservation: await cancelReservation(req.user.profileId, req.params.id) }, message: "Reservation cancelled." }));
-export const tickets = asyncHandler(async (req, res) => sendSuccess(res, { data: { tickets: await listTickets(req.user.profileId) } }));
+export const tickets = asyncHandler(async (req, res) => sendSuccess(res, { data: { tickets: await listTickets(req.user) } }));
 export const ticket = asyncHandler(async (req, res) => {
-  const result = await getTicket(req.user.profileId, req.params.id);
+  const result = await getTicket(req.user, req.params.id);
   if (!result) throw new AppError(404, "Ticket not found.", "TICKET_NOT_FOUND");
   return sendSuccess(res, { data: { ticket: result } });
 });
-export const tracking = asyncHandler(async (req, res) => sendSuccess(res, { data: { buses: await listTracking(req.user.userType) } }));
-export const trackingBus = asyncHandler(async (req, res) => sendSuccess(res, { data: { bus: (await listTracking(req.user.userType, req.params.id))[0] || null } }));
+export const downloadTicket = asyncHandler(async (req, res) => {
+  const result = await getTicket(req.user, req.params.id);
+  if (!result) throw new AppError(404, "Ticket not found.", "TICKET_NOT_FOUND");
+  
+  // Format ticket as a downloadable text receipt
+  const receipt = `
+========================================
+             SAFAR TICKET              
+========================================
+Ticket ID:      ${result.id}
+Status:         ${result.status}
+Issue Date:     ${new Date().toLocaleString()}
+----------------------------------------
+Passenger:      ${req.user.fullName}
+Role:           ${req.user.role}
+----------------------------------------
+Travel Date:    ${result.date}
+Bus:            ${result.busName} (${result.busNumber})
+Route:          ${result.route}
+Departure:      ${result.departureTime}
+Seat:           ${result.seatNumber}
+========================================
+Scan the QR code at the bus to board.
+  `;
+  
+  res.setHeader("Content-Disposition", `attachment; filename="safar-ticket-${result.id}.txt"`);
+  res.setHeader("Content-Type", "text/plain");
+  return res.send(receipt.trim());
+});
+
+export const downloadInvoice = asyncHandler(async (req, res) => {
+  const result = await getTicket(req.user, req.params.id);
+  if (!result) throw new AppError(404, "Ticket not found.", "TICKET_NOT_FOUND");
+  if (!result.invoice) throw new AppError(404, "Invoice not found for this ticket.", "INVOICE_NOT_FOUND");
+
+  const PDFDocument = (await import("pdfkit")).default;
+  const doc = new PDFDocument({ margin: 50, size: 'A4' });
+
+  res.setHeader("Content-Disposition", `attachment; filename="invoice-${result.invoice.invoiceNumber}.pdf"`);
+  res.setHeader("Content-Type", "application/pdf");
+  
+  doc.pipe(res);
+  
+  // Header
+  doc.fontSize(24).font('Helvetica-Bold').text("SAFAR", { align: 'left' });
+  doc.fontSize(10).font('Helvetica').text("Chittagong University of Engineering & Technology", { align: 'left' });
+  doc.text("Pahartali, Raozan, Chattogram-4349", { align: 'left' });
+  
+  doc.moveUp(3);
+  doc.fontSize(20).font('Helvetica-Bold').text("INVOICE", { align: 'right' });
+  doc.fontSize(10).font('Helvetica').text(`Invoice No: ${result.invoice.invoiceNumber}`, { align: 'right' });
+  doc.text(`Date: ${new Date(result.invoice.issueDate).toLocaleDateString()}`, { align: 'right' });
+  
+  doc.moveDown(3);
+  
+  // Passenger Info
+  doc.fontSize(12).font('Helvetica-Bold').text("Billed To:");
+  doc.fontSize(10).font('Helvetica').text(`Name: ${result.passengerName}`);
+  doc.text(`Role: ${result.roleLabel}`);
+  if (result.universityId) doc.text(`ID: ${result.universityId}`);
+  doc.text(`Email: ${result.email}`);
+  
+  doc.moveUp(4);
+  doc.fontSize(12).font('Helvetica-Bold').text("Booking Details:", { align: 'right' });
+  doc.fontSize(10).font('Helvetica').text(`Booking ID: ${result.bookingId}`, { align: 'right' });
+  doc.text(`Ticket ID: ${result.ticketId}`, { align: 'right' });
+  doc.text(`Status: ${result.invoice.paymentStatus}`, { align: 'right' });
+  
+  doc.moveDown(3);
+  
+  // Trip Details Table
+  const tableTop = 330;
+  doc.font('Helvetica-Bold').text("Trip Information", 50, tableTop - 20);
+  
+  // Draw table line
+  doc.moveTo(50, tableTop).lineTo(550, tableTop).stroke();
+  
+  doc.font('Helvetica-Bold').fontSize(10);
+  doc.text("Bus", 50, tableTop + 10);
+  doc.text("Route", 200, tableTop + 10);
+  doc.text("Date", 350, tableTop + 10);
+  doc.text("Time", 420, tableTop + 10);
+  doc.text("Seat", 500, tableTop + 10);
+  
+  doc.moveTo(50, tableTop + 30).lineTo(550, tableTop + 30).stroke();
+  
+  doc.font('Helvetica').fontSize(10);
+  doc.text(result.busName, 50, tableTop + 40, { width: 140 });
+  doc.text(result.route, 200, tableTop + 40, { width: 140 });
+  doc.text(result.date, 350, tableTop + 40);
+  doc.text(result.departureTime, 420, tableTop + 40);
+  doc.text(result.seatNumber, 500, tableTop + 40);
+  
+  doc.moveTo(50, tableTop + 70).lineTo(550, tableTop + 70).stroke();
+  
+  // Payment Summary
+  const summaryTop = tableTop + 100;
+  doc.font('Helvetica-Bold').text("Payment Summary", 50, summaryTop - 20);
+  
+  doc.moveTo(50, summaryTop).lineTo(550, summaryTop).stroke();
+  
+  doc.font('Helvetica-Bold');
+  doc.text("Description", 50, summaryTop + 10);
+  doc.text("Qty", 350, summaryTop + 10, { align: 'right' });
+  doc.text("Amount", 450, summaryTop + 10, { align: 'right' });
+  
+  doc.moveTo(50, summaryTop + 30).lineTo(550, summaryTop + 30).stroke();
+  
+  doc.font('Helvetica');
+  doc.text("Transport Ticket", 50, summaryTop + 40);
+  doc.text("1", 350, summaryTop + 40, { align: 'right' });
+  doc.text(`${result.invoice.subtotal.toFixed(2)} ${result.invoice.currency}`, 450, summaryTop + 40, { align: 'right' });
+  
+  doc.moveTo(350, summaryTop + 60).lineTo(550, summaryTop + 60).stroke();
+  
+  doc.font('Helvetica-Bold');
+  doc.text("Total:", 350, summaryTop + 70, { align: 'right' });
+  doc.text(`${result.invoice.total.toFixed(2)} ${result.invoice.currency}`, 450, summaryTop + 70, { align: 'right' });
+  
+  // Footer
+  doc.fontSize(10).font('Helvetica').text(
+    "Thank you for using Safar! Keep this invoice for your records.", 
+    50, 
+    700, 
+    { align: 'center', width: 500 }
+  );
+  
+  doc.end();
+});
+export const shareTicket = asyncHandler(async (req, res) => {
+  const result = await getTicket(req.user, req.params.id);
+  if (!result) throw new AppError(404, "Ticket not found.", "TICKET_NOT_FOUND");
+  
+  // Return a mock shareable link
+  const shareLink = `https://safar.app/verify/${result.id}`;
+  return sendSuccess(res, { data: { link: shareLink }, message: "Share link generated successfully." });
+});
+export const tracking = asyncHandler(async (req, res) => sendSuccess(res, { data: { buses: await listTracking(req.user) } }));
+export const trackingBus = asyncHandler(async (req, res) => sendSuccess(res, { data: { bus: (await listTracking(req.user, req.params.id))[0] || null } }));
 export const serviceStatus = asyncHandler(async (_req, res) => {
   const [maintenance, alerts] = await Promise.all([maintenanceRecords(), operationalAlerts()]);
   return sendSuccess(res, { data: { maintenance, alerts: { conditions: alerts.conditions, delays: alerts.delays, emergencies: [] } } });
@@ -116,6 +258,9 @@ export const removeAdminRoute = asyncHandler(async (req, res) => { await deleteA
 export const getAdminSchedules = asyncHandler(async (_req, res) => sendSuccess(res, { data: { schedules: await adminSchedules() } }));
 export const putAdminSchedule = asyncHandler(async (req, res) => sendSuccess(res, { data: { schedule: await saveAdminSchedule(req.body) } }));
 export const removeAdminSchedule = asyncHandler(async (req, res) => { await deleteAdminSchedule(req.params.id); return sendSuccess(res, { message: "Schedule deleted." }); });
+export const getAdminAssignments = asyncHandler(async (_req, res) => sendSuccess(res, { data: { assignments: await adminAssignments() } }));
+export const putAdminAssignment = asyncHandler(async (req, res) => sendSuccess(res, { status: 201, data: { assignment: await saveAdminAssignment(req.body) } }));
+export const removeAdminAssignment = asyncHandler(async (req, res) => { await cancelAdminAssignment(req.params.id); return sendSuccess(res, { message: "Assignment cancelled." }); });
 export const getAdminReservations = asyncHandler(async (_req, res) => sendSuccess(res, { data: { reservations: await listReservations(null, { all: true }) } }));
 export const getAdminUsers = asyncHandler(async (_req, res) => sendSuccess(res, { data: { users: await adminUsers() } }));
 export const putAdminUser = asyncHandler(async (req, res) => sendSuccess(res, { data: { user: await updateAdminUser(req.params.id, req.body) } }));
@@ -126,3 +271,7 @@ export const putMaintenance = asyncHandler(async (req, res) => sendSuccess(res, 
 export const getAlerts = asyncHandler(async (_req, res) => sendSuccess(res, { data: { alerts: await operationalAlerts() } }));
 export const getOverview = asyncHandler(async (_req, res) => sendSuccess(res, { data: { overview: await adminOverview() } }));
 export const getAnalytics = asyncHandler(async (_req, res) => sendSuccess(res, { data: { analytics: await adminAnalytics() } }));
+
+export const getPredictionsOccupancy = asyncHandler(async (_req, res) => sendSuccess(res, { data: { predictions: await getOccupancyPredictions() } }));
+export const getPredictionsInsights = asyncHandler(async (_req, res) => sendSuccess(res, { data: { insights: await getSmartTransportationInsights() } }));
+export const getRecommendationsAllocations = asyncHandler(async (_req, res) => sendSuccess(res, { data: { allocations: await getBusAllocationRecommendations() } }));

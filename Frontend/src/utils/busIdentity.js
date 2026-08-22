@@ -1,24 +1,9 @@
-const BUS_ACCENTS = {
-  Surma: "bus-violet",
-  Meghna: "bus-cyan",
-  Padma: "bus-emerald",
-  Jamuna: "bus-orange",
-  Brahmaputra: "bus-rose",
-  Karnaphuli: "bus-indigo",
-  Teesta: "bus-teal",
-  Madhumati: "bus-amber",
-  Atrai: "bus-rose",
-  Buriganga: "bus-purple",
-  Shitalakshya: "bus-blue",
-  Dhaleshwari: "bus-green",
-  Rupsa: "bus-orange",
-  Pasur: "bus-cyan",
-  Sangu: "bus-violet",
-  Halda: "bus-emerald",
-  Gorai: "bus-rose",
-  Kushiyara: "bus-indigo",
-};
+const BUS_ACCENTS = [
+  "bus-violet", "bus-cyan", "bus-emerald", "bus-orange", "bus-rose", "bus-indigo",
+  "bus-teal", "bus-amber", "bus-purple", "bus-blue", "bus-green",
+];
 
-export function getBusAccent(busName) {
-  return BUS_ACCENTS[busName] || "bus-violet";
+export function getBusAccent(identity = "") {
+  const index = [...String(identity)].reduce((sum, character) => sum + character.codePointAt(0), 0) % BUS_ACCENTS.length;
+  return BUS_ACCENTS[index];
 }

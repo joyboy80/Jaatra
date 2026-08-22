@@ -1,32 +1,11 @@
-function hashString(value) {
-  return value.split("").reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0);
-}
+import { QrCode } from "lucide-react";
 
 export default function QRCode({ value }) {
-  const size = 13;
-  const seed = Math.abs(hashString(value));
-  const cells = Array.from({ length: size * size }, (_, index) => {
-    const row = Math.floor(index / size);
-    const column = index % size;
-    const finder =
-      (row < 4 && column < 4) ||
-      (row < 4 && column > size - 5) ||
-      (row > size - 5 && column < 4);
-
-    if (finder) {
-      return row === 0 || column === 0 || row === 3 || column === 3 || (row === 1 && column === 1) || (row === 2 && column === 2);
-    }
-
-    return ((seed + row * 17 + column * 31 + row * column) % 5) < 2;
-  });
-
   return (
-    <div className="qr-code-surface inline-grid rounded-lg p-3 ring-1 ring-slate-200" aria-label={`QR code for ticket ${value}`}>
-      <div className="grid h-40 w-40 grid-cols-[repeat(13,minmax(0,1fr))] gap-0.5">
-        {cells.map((filled, index) => (
-          <span key={index} className={filled ? "qr-cell-on" : "qr-cell-off"} />
-        ))}
-      </div>
+    <div className="inline-flex min-h-40 w-40 flex-col items-center justify-center rounded-lg bg-white p-4 text-center ring-1 ring-slate-200" aria-label={`Ticket identifier ${value}`}>
+      <QrCode className="h-10 w-10 text-safar-teal" />
+      <p className="mt-3 break-all text-xs font-bold text-safar-ink">{value}</p>
+      <p className="mt-2 text-[10px] font-medium text-safar-gray">QR image currently unavailable</p>
     </div>
   );
 }

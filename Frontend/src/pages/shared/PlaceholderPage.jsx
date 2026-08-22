@@ -18,12 +18,12 @@ export default function PlaceholderPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Jaatra Module"
+          eyebrow="Safar Module"
           title={toTitle(section)}
           description="This protected module is reserved for the next implementation phase."
         />
         <div>
-          <Construction className="h-8 w-8 text-jaatra-teal" />
+          <Construction className="h-8 w-8 text-safar-teal" />
           <div className="mt-4">
             <EmptyState title={`${toTitle(section)} is ready for Step 2`} message="Routing, layout, and role protection are already in place." />
           </div>

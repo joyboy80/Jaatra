@@ -10,7 +10,7 @@ export default function MobileMenu({ open, user, onClose, onLogout }) {
 
   return (
     <div className="fixed inset-0 z-40 lg:hidden">
-      <button className="absolute inset-0 bg-jaatra-ink/40" onClick={onClose} aria-label="Close navigation overlay" />
+      <button className="absolute inset-0 bg-safar-ink/40" onClick={onClose} aria-label="Close navigation overlay" />
       <aside className="relative h-full w-[88vw] max-w-sm overflow-y-auto border-r border-slate-200 bg-white p-4 shadow-soft">
         <div className="flex items-center justify-between">
           <Logo />
@@ -26,7 +26,7 @@ export default function MobileMenu({ open, user, onClose, onLogout }) {
               onClick={onClose}
               className={({ isActive }) =>
                 `focus-ring flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold transition ${
-                  isActive ? "bg-jaatra-mint text-jaatra-navy shadow-sm" : "text-jaatra-gray hover:bg-slate-100 hover:text-jaatra-ink"
+                  isActive ? "bg-safar-mint text-safar-navy shadow-sm" : "text-safar-gray hover:bg-slate-100 hover:text-safar-ink"
                 }`
               }
             >

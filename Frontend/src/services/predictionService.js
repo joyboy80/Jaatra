@@ -1,13 +1,14 @@
-import { occupancyPredictions, smartInsightDefaults } from "../data/aiInsights.js";
+import { apiRequest } from "./api.js";
 
 export async function getOccupancyPredictions() {
-  return occupancyPredictions.map((prediction) => ({ ...prediction }));
+  return (await apiRequest("/admin/transport/predictions/occupancy")).predictions;
 }
 
 export async function getSmartTransportationInsights() {
-  return smartInsightDefaults.map((insight) => ({ ...insight }));
+  return (await apiRequest("/admin/transport/predictions/insights")).insights;
 }
 
-export async function predictBusOccupancy(busId) {
-  return occupancyPredictions.find((prediction) => prediction.busId === busId) || null;
+export async function predictBusOccupancy() {
+  // Not explicitly used in the UI, but we can map it to occupancy
+  return getOccupancyPredictions();
 }

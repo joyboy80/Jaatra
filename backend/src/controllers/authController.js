@@ -22,6 +22,7 @@ import {
   validateRefresh,
   validateRegistration,
   validateResetPassword,
+  validatePasswordChange,
 } from "../validators/authValidator.js";
 
 export const register = asyncHandler(async (req, res) => {
@@ -51,7 +52,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   const result = await verifyRegistrationOtp(input.email, input.otp);
   return sendSuccess(res, {
     data: result,
-    message: result.requiresApproval ? "Email verified. Your Driver account is awaiting Transport Admin approval." : "Email verified. Registration completed.",
+    message: "Email verified. Registration completed.",
   });
 });
 
@@ -103,4 +104,12 @@ export const resetPassword = asyncHandler(async (req, res) => {
   const { password } = validateResetPassword(req.body);
   await resetUserPassword(accessToken, password);
   return sendSuccess(res, { message: "Password reset successful. Sign in with the new password." });
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const accessToken = readSessionCookies(req).accessToken || readBearerToken(req.headers.authorization);
+  if (!accessToken) throw new AppError(401, "An access token is required.", "UNAUTHORIZED");
+  const { password } = validatePasswordChange(req.body);
+  await resetUserPassword(accessToken, password);
+  return sendSuccess(res, { message: "Password updated successfully." });
 });

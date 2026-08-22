@@ -1,8 +1,8 @@
 import { env } from "../config/env.js";
 
-export const ACCESS_COOKIE = "jaatra_access";
-export const REFRESH_COOKIE = "jaatra_refresh";
-export const REMEMBER_COOKIE = "jaatra_remember";
+export const ACCESS_COOKIE = "safar_access";
+export const REFRESH_COOKIE = "safar_refresh";
+export const REMEMBER_COOKIE = "safar_remember";
 
 function cookieValue(value) {
   return encodeURIComponent(value);

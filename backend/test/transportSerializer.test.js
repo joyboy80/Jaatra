@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { serializeBus, serializeReservation, serializeTrip } from "../src/services/transportService.js";
+import { scheduleDate, serializeBus, serializeReservation, serializeTrip, validateAdminBusInput } from "../src/services/transportService.js";
 
 test("transport serializers preserve the established frontend contracts", () => {
   const busRow = {
@@ -18,6 +18,19 @@ test("transport serializers preserve the established frontend contracts", () => 
   const trip = serializeTrip({ id: "BUS-001-M1", bus_id: "BUS-001", route: busRow.route, stops: busRow.stops, departure_time: "07:30 AM", arrival_time: "08:20 AM", status: "Scheduled", buses: busRow });
   assert.equal(trip.busName, "Surma");
   assert.equal(trip.busCategory, "Student Bus");
+});
+
+test("admin fleet input validates buses before database writes", () => {
+  const bus = validateAdminBusInput({ name: "Karnaphuli", number: "JA-4040", type: "Student Bus", capacity: 40, route: "CUET - Station", status: "On Time" });
+  assert.equal(bus.name, "Karnaphuli");
+  assert.deepEqual(bus.stops, ["CUET", "Station"]);
+  assert.throws(() => validateAdminBusInput({ name: "", number: "JA-1", type: "Student Bus", capacity: 40, route: "CUET - Station" }), (error) => error.code === "BUS_VALIDATION_ERROR");
+  assert.throws(() => validateAdminBusInput({ name: "A", number: "JA-1", type: "Student Bus", capacity: 2, route: "CUET - Station" }), (error) => error.code === "INVALID_BUS_CAPACITY");
+});
+
+test("passenger schedule queries accept only ISO service dates", () => {
+  assert.equal(scheduleDate("2026-08-20"), "2026-08-20");
+  assert.throws(() => scheduleDate("20/08/2026"), (error) => error.code === "INVALID_SERVICE_DATE");
 });
 
 test("reservation serializer does not expose database naming", () => {

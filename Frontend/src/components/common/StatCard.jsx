@@ -1,6 +1,6 @@
 const accents = ["stat-violet", "stat-cyan", "stat-emerald", "stat-amber", "stat-rose"];
 
-export default function StatCard({ icon: Icon, label, value, helper, tone = "text-jaatra-teal", accent }) {
+export default function StatCard({ icon: Icon, label, value, helper, tone = "text-safar-teal", accent }) {
   const derivedAccent = accent || accents[(label?.length || 0) % accents.length];
   return (
     <div className={`stat-card ${derivedAccent}`}>
@@ -9,9 +9,9 @@ export default function StatCard({ icon: Icon, label, value, helper, tone = "tex
           <Icon className={`h-5 w-5 ${tone}`} />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-jaatra-gray">{label}</p>
-          <p className="text-2xl font-bold text-jaatra-ink">{value}</p>
-          {helper && <p className="truncate text-xs font-medium text-jaatra-gray">{helper}</p>}
+          <p className="text-sm font-medium text-safar-gray">{label}</p>
+          <p className="text-2xl font-bold text-safar-ink">{value}</p>
+          {helper && <p className="truncate text-xs font-medium text-safar-gray">{helper}</p>}
         </div>
       </div>
     </div>

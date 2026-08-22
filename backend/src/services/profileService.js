@@ -63,9 +63,22 @@ export async function createProfile(profile) {
 }
 
 export async function updateProfile(authUserId, updates) {
-  const { data, error } = await getSupabaseAdmin().from("profiles").update(updates).eq("auth_user_id", authUserId).select("*").single();
-  if (error) throw profileError(error, "update", "That profile value is already in use.");
-  return data;
+  const { preferences, ...dbUpdates } = updates;
+  
+  if (preferences) {
+    const { error: metaError } = await getSupabaseAdmin().auth.admin.updateUserById(authUserId, {
+      user_metadata: { preferences }
+    });
+    if (metaError) throw profileError(metaError, "update", "Unable to update preferences.");
+  }
+
+  if (Object.keys(dbUpdates).length > 0) {
+    const { data, error } = await getSupabaseAdmin().from("profiles").update(dbUpdates).eq("auth_user_id", authUserId).select("*").single();
+    if (error) throw profileError(error, "update", "That profile value is already in use.");
+    return data;
+  }
+  
+  return getProfileByAuthUserId(authUserId);
 }
 
 export async function updateProfileById(profileId, updates) {

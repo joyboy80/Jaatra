@@ -39,7 +39,7 @@ export default function ResetPasswordPage() {
   return (
     <AuthPageShell eyebrow="Secure recovery" title="Choose a new password" description="Use at least eight characters with uppercase, lowercase, and a number.">
       {!token ? <div className="mt-6 rounded-lg bg-red-50 px-4 py-4 text-sm font-medium text-red-700">This recovery link is missing its access token or has expired. Request a new link.</div> : <form className="mx-auto mt-6 max-w-md space-y-5" onSubmit={submit}>{error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}{["password", "confirmPassword"].map((name) => <label className="block" key={name}><span className="text-sm font-semibold">{name === "password" ? "New password" : "Confirm new password"}</span><input className="focus-ring mt-2 h-12 w-full rounded-lg border border-slate-200 px-3 text-sm" type="password" value={form[name]} onChange={(event) => setForm((current) => ({ ...current, [name]: event.target.value }))} minLength="8" required /></label>)}<Button className="w-full" type="submit" loading={loading}>Set new password</Button></form>}
-      <p className="mt-6 text-center text-sm"><Link className="font-semibold text-jaatra-teal" to="/forgot-password">Request another recovery link</Link></p>
+      <p className="mt-6 text-center text-sm"><Link className="font-semibold text-safar-teal" to="/forgot-password">Request another recovery link</Link></p>
     </AuthPageShell>
   );
 }

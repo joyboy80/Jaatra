@@ -29,7 +29,7 @@ import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import BusDetailsPage from "./pages/shared/BusDetailsPage";
 import NotificationsPage from "./pages/shared/NotificationsPage";
 import LiveTrackingPage from "./pages/shared/LiveTrackingPage";
-import JaatraAIPage from "./pages/shared/JaatraAIPage";
+import SafarAIPage from "./pages/shared/SafarAIPage";
 import PlaceholderPage from "./pages/shared/PlaceholderPage";
 import ProfilePage from "./pages/shared/ProfilePage";
 import ReservationFlowPage from "./pages/shared/ReservationFlowPage";
@@ -42,17 +42,16 @@ import SettingsPage from "./pages/shared/SettingsPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleBasedRoute from "./routes/RoleBasedRoute";
 import { ROLES } from "./utils/roles";
-import { backendEnabled } from "./services/api";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={backendEnabled ? <RegisterPage /> : <Navigate to="/login" replace />} />
-      <Route path="/verify-otp" element={backendEnabled ? <VerifyOtpPage /> : <Navigate to="/login" replace />} />
-      <Route path="/forgot-password" element={backendEnabled ? <ForgotPasswordPage /> : <Navigate to="/login" replace />} />
-      <Route path="/reset-password" element={backendEnabled ? <ResetPasswordPage /> : <Navigate to="/login" replace />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-otp" element={<VerifyOtpPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.STUDENT]} />}>
@@ -68,7 +67,7 @@ export default function App() {
           <Route path="/student/profile" element={<ProfilePage role={ROLES.STUDENT} />} />
           <Route path="/student/settings" element={<SettingsPage />} />
           <Route path="/student/tracking" element={<LiveTrackingPage role={ROLES.STUDENT} />} />
-          <Route path="/student/ai" element={<JaatraAIPage />} />
+          <Route path="/student/ai" element={<SafarAIPage />} />
           <Route path="/student/:section" element={<PlaceholderPage />} />
         </Route>
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.TEACHER]} />}>
@@ -84,7 +83,7 @@ export default function App() {
           <Route path="/teacher/profile" element={<ProfilePage role={ROLES.TEACHER} />} />
           <Route path="/teacher/settings" element={<SettingsPage />} />
           <Route path="/teacher/tracking" element={<LiveTrackingPage role={ROLES.TEACHER} />} />
-          <Route path="/teacher/ai" element={<JaatraAIPage />} />
+          <Route path="/teacher/ai" element={<SafarAIPage />} />
           <Route path="/teacher/:section" element={<PlaceholderPage />} />
         </Route>
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.STAFF]} />}>
@@ -100,7 +99,7 @@ export default function App() {
           <Route path="/staff/profile" element={<ProfilePage role={ROLES.STAFF} />} />
           <Route path="/staff/settings" element={<SettingsPage />} />
           <Route path="/staff/tracking" element={<LiveTrackingPage role={ROLES.STAFF} />} />
-          <Route path="/staff/ai" element={<JaatraAIPage />} />
+          <Route path="/staff/ai" element={<SafarAIPage />} />
           <Route path="/staff/:section" element={<PlaceholderPage />} />
         </Route>
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.DRIVER]} />}>
