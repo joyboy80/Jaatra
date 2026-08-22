@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   bus, buses, createReservation, notifications, readAllNotifications, readNotification, removeNotifications,
   removeReservation, reservations, routes, seats, serviceStatus, ticket, tickets, tracking, trackingBus, trips,
+  downloadTicket, downloadInvoice, shareTicket,
 } from "../controllers/transportController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import requireRole from "../middleware/requireRole.js";
@@ -27,5 +28,7 @@ router.post("/reservations", createReservation);
 router.delete("/reservations/:id", removeReservation);
 router.get("/tickets", tickets);
 router.get("/tickets/:id", ticket);
-
+router.get("/tickets/:id/download", downloadTicket);
+router.get("/tickets/:id/invoice", downloadInvoice);
+router.post("/tickets/:id/share", shareTicket);
 export default router;
