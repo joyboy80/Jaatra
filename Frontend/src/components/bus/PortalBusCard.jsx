@@ -44,21 +44,21 @@ export default function PortalBusCard({ bus, role }) {
 
       <div className="mt-5 grid gap-2 sm:grid-cols-3">
         <Link
-          className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+          className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white/50 backdrop-blur-md px-3 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200/50 transition-all duration-300 hover:bg-white/80 hover:shadow-glow dark:bg-slate-800/50 dark:text-white dark:ring-slate-700/50 dark:hover:bg-slate-700/80"
           to={`/${role}/buses/${bus.id}`}
         >
           <Eye className="h-4 w-4" />
           View Details
         </Link>
         <Link
-          className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-safar-teal px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-safar-navy"
+          className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-maroon to-brand-purple px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:shadow-glow hover:-translate-y-0.5"
           to={`/${role}/reservations/new?busId=${encodeURIComponent(bus.id)}`}
         >
           <Ticket className="h-4 w-4" />
           Reserve Seat
         </Link>
         <Link
-          className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-cyan-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700"
+          className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-blue-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:shadow-glow hover:-translate-y-0.5"
           to={`/${role}/tracking`}
         >
           <Navigation className="h-4 w-4" />

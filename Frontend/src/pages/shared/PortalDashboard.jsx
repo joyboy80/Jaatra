@@ -82,7 +82,7 @@ export default function PortalDashboard({ role }) {
 
         {!error && role !== "student" && (
           <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <div className="rounded-3xl bg-white/70 p-5 shadow-sm ring-1 ring-white/40 backdrop-blur-3xl dark:bg-slate-900/70 dark:ring-slate-700/50">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-bold text-safar-ink">Available Seats</h2>
@@ -91,7 +91,7 @@ export default function PortalDashboard({ role }) {
                 <Badge tone="success">{totalSeats} seats</Badge>
               </div>
             </div>
-            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <div className="rounded-3xl bg-white/70 p-5 shadow-sm ring-1 ring-white/40 backdrop-blur-3xl dark:bg-slate-900/70 dark:ring-slate-700/50">
               <div className="flex items-center gap-3">
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-safar-mint">
                   <Users className="h-5 w-5 text-safar-teal" />

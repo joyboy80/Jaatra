@@ -154,9 +154,10 @@ textarea {
   }
 
   .icon-button {
-    @apply grid h-10 w-10 shrink-0 place-items-center rounded-xl transition duration-200;
+    @apply grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-all duration-300 backdrop-blur-md;
     color: rgb(var(--muted-foreground));
-    background: rgb(var(--surface-muted) / 0.5);
+    background: rgb(var(--surface-muted) / 0.4);
+    border: 1px solid rgb(var(--border) / 0.5);
   }
 
   .icon-button:hover {
@@ -183,10 +184,10 @@ textarea {
   }
 
   .stat-card {
-    @apply relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm border border-slate-200/60 transition duration-300 hover:-translate-y-1 hover:shadow-float;
+    @apply relative overflow-hidden rounded-3xl bg-white/70 backdrop-blur-2xl p-5 shadow-sm border border-white/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-glow;
   }
   .dark .stat-card {
-    @apply bg-slate-800 border-slate-700;
+    @apply bg-slate-900/70 border-slate-700/50 hover:bg-slate-800/80;
   }
 
   .stat-card::after {
@@ -216,20 +217,20 @@ textarea {
   }
 
   .route-board {
-    @apply rounded-2xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-md;
+    @apply rounded-3xl border border-white/30 bg-white/40 p-6 shadow-2xl backdrop-blur-3xl;
   }
 
   .bus-card {
-    @apply relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm border border-slate-200/60 transition duration-300 hover:-translate-y-1 hover:shadow-float cursor-pointer;
+    @apply relative overflow-hidden rounded-3xl bg-white/70 backdrop-blur-2xl p-5 shadow-sm border border-white/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-glow cursor-pointer;
     --bus-color: #831843;
     --bus-soft: rgb(131 24 67 / 0.08);
   }
   .dark .bus-card {
-    @apply bg-slate-800 border-slate-700 hover:bg-slate-700;
+    @apply bg-slate-900/70 border-slate-700/50 hover:bg-slate-800/80;
   }
 
   .bus-card:hover {
-    @apply ring-2 ring-safar-teal/30;
+    @apply ring-1 ring-safar-teal/50;
   }
 
   .bus-card::before {

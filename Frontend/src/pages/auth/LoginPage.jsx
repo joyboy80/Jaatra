@@ -137,7 +137,7 @@ export default function LoginPage() {
             <div className="mb-8 flex justify-center lg:hidden">
               <Logo />
             </div>
-            <div className="rounded-3xl bg-white/80 p-6 shadow-2xl ring-1 ring-slate-200/60 backdrop-blur-2xl sm:p-10 dark:bg-slate-900/80 dark:ring-slate-700/50">
+            <div className="rounded-3xl bg-white/60 p-6 shadow-2xl ring-1 ring-white/40 backdrop-blur-3xl sm:p-10 dark:bg-slate-900/60 dark:ring-slate-700/50">
               <div className="text-center mb-8">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-cyan dark:text-cyan-400">Welcome back</p>
                 <h2 className="mt-3 text-4xl font-display font-black text-safar-ink dark:text-white">Sign in to Safar</h2>

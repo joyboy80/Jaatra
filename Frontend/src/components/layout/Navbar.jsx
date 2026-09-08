@@ -21,7 +21,7 @@ export default function Navbar({ user, onMenu }) {
   ), [user.id, user.role]);
 
   return (
-    <header className="sticky top-0 z-30 mb-6 bg-white/70 px-4 py-3 backdrop-blur-xl border-b border-slate-200/50 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/50 lg:px-8 transition-colors duration-300">
+    <header className="sticky top-0 z-30 mb-6 bg-white/70 px-4 py-3 backdrop-blur-3xl border-b border-white/40 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/50 lg:px-8 transition-colors duration-300">
       <div className="flex items-center gap-4">
         <button className="focus-ring icon-button rounded-full lg:hidden" onClick={onMenu} aria-label="Open navigation">
           <Menu className="h-5 w-5" />
