@@ -1,4 +1,6 @@
 import "dotenv/config";
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
 import app from "./app.js";
 import { env, validateEnvironment } from "./config/env.js";
 import { verifySupabaseConnection } from "./config/supabase.js";

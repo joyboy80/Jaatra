@@ -41,21 +41,39 @@ Gracefully handle questions you cannot answer. Never expose raw API responses or
       })) 
     : [];
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: [
-        ...history,
-        { role: 'user', parts: [{ text: question }] }
-      ],
-      config: { systemInstruction }
-    });
-    
-    return { question, answer: response.text, generatedAt: new Date().toISOString() };
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    const msg = error?.message || "Sorry, I couldn't process your request right now. Please try again.";
-    throw new AppError(500, msg, "AI_SERVICE_ERROR");
+  let response;
+  let attempts = 0;
+  let lastError;
+
+  while (attempts < 3) {
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: [
+          ...history,
+          { role: 'user', parts: [{ text: question }] }
+        ],
+        config: { systemInstruction }
+      });
+      
+      return { question, answer: response.text, generatedAt: new Date().toISOString() };
+    } catch (error) {
+      lastError = error;
+      attempts++;
+      
+      const isNetworkError = error.code === 'ECONNRESET' || error.cause?.code === 'ECONNRESET' || error.message?.includes('fetch failed');
+      
+      if (attempts >= 3 || !isNetworkError) {
+        break; // Stop retrying if max attempts reached or it's not a network error
+      }
+      
+      // Wait 1 second before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
+
+  console.error("Gemini API Error after retries:", lastError);
+  const msg = lastError?.message || "Sorry, I couldn't process your request right now. Please try again.";
+  throw new AppError(500, msg, "AI_SERVICE_ERROR");
 }
 

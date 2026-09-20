@@ -51,9 +51,20 @@ export async function apiRequest(path, { method = "GET", body, token, signal, re
     notifySessionExpired();
   }
 
-  const payload = await response.json().catch(() => null);
+  let payload = null;
+  let textBody = null;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    textBody = await response.text().catch(() => null);
+  }
+
   if (!response.ok) {
-    const error = new Error(payload?.error?.message || `Request failed with status ${response.status}.`);
+    let errorMessage = payload?.error?.message;
+    if (!errorMessage && textBody) {
+      errorMessage = `Server Error (${response.status}): ${textBody.slice(0, 100)}`;
+    }
+    const error = new Error(errorMessage || `Request failed with status ${response.status}.`);
     error.status = response.status;
     error.code = payload?.error?.code || "API_ERROR";
     error.details = payload?.error?.details;
