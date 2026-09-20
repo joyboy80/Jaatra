@@ -23,9 +23,8 @@ import { ROLES } from "./roles";
 
 const sharedCampusNav = [
   { label: "Dashboard", path: "dashboard", icon: LayoutDashboard },
-  { label: "Today's Buses", path: "today-buses", icon: Bus },
+  { label: "Available Buses", path: "available-buses", icon: Bus },
   { label: "Routes", path: "routes", icon: Map },
-  { label: "Reservations", path: "reservations", icon: ClipboardList },
   { label: "My Tickets", path: "tickets", icon: Ticket },
   { label: "Live Tracking", path: "tracking", icon: MapPinned },
   { label: "Notifications", path: "notifications", icon: Bell },
@@ -52,7 +51,6 @@ export const navigationByRole = {
     { label: "Dashboard", path: "dashboard", icon: LayoutDashboard },
     { label: "Live Fleet", path: "fleet", icon: Activity },
     { label: "Buses", path: "buses", icon: Bus },
-    { label: "Routes", path: "routes", icon: Map },
     { label: "Schedules", path: "schedules", icon: CalendarDays },
     { label: "Reservations", path: "reservations", icon: ClipboardList },
     { label: "Users", path: "users", icon: Users },

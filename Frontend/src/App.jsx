@@ -13,7 +13,6 @@ import DriverManagementPage from "./pages/admin/DriverManagementPage";
 import FleetMonitoringPage from "./pages/admin/FleetMonitoringPage";
 import MaintenancePage from "./pages/admin/MaintenancePage";
 import ReservationManagementPage from "./pages/admin/ReservationManagementPage";
-import RouteManagementPage from "./pages/admin/RouteManagementPage";
 import ScheduleManagementPage from "./pages/admin/ScheduleManagementPage";
 import UserManagementPage from "./pages/admin/UserManagementPage";
 import DriverDashboard from "./pages/driver/DriverDashboard";
@@ -57,10 +56,11 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.STUDENT]} />}>
           <Route path="/student/dashboard" element={<StudentDashboard />} />
-          <Route path="/student/today-buses" element={<TodayBusesPage role={ROLES.STUDENT} />} />
+          <Route path="/student/available-buses" element={<TodayBusesPage role={ROLES.STUDENT} />} />
+          <Route path="/student/today-buses" element={<Navigate to="/student/available-buses" replace />} />
           <Route path="/student/buses/:id" element={<BusDetailsPage role={ROLES.STUDENT} />} />
           <Route path="/student/routes" element={<RouteExplorerPage role={ROLES.STUDENT} />} />
-          <Route path="/student/reservations" element={<ReservationsPage role={ROLES.STUDENT} />} />
+          <Route path="/student/reservations" element={<Navigate to="/student/available-buses?tab=reservations" replace />} />
           <Route path="/student/reservations/new" element={<ReservationFlowPage role={ROLES.STUDENT} />} />
           <Route path="/student/tickets" element={<TicketsPage role={ROLES.STUDENT} />} />
           <Route path="/student/tickets/:ticketId" element={<TicketDetailsPage role={ROLES.STUDENT} />} />
@@ -73,10 +73,11 @@ export default function App() {
         </Route>
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.TEACHER]} />}>
           <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
-          <Route path="/teacher/today-buses" element={<TodayBusesPage role={ROLES.TEACHER} />} />
+          <Route path="/teacher/available-buses" element={<TodayBusesPage role={ROLES.TEACHER} />} />
+          <Route path="/teacher/today-buses" element={<Navigate to="/teacher/available-buses" replace />} />
           <Route path="/teacher/buses/:id" element={<BusDetailsPage role={ROLES.TEACHER} />} />
           <Route path="/teacher/routes" element={<RouteExplorerPage role={ROLES.TEACHER} />} />
-          <Route path="/teacher/reservations" element={<ReservationsPage role={ROLES.TEACHER} />} />
+          <Route path="/teacher/reservations" element={<Navigate to="/teacher/available-buses?tab=reservations" replace />} />
           <Route path="/teacher/reservations/new" element={<ReservationFlowPage role={ROLES.TEACHER} />} />
           <Route path="/teacher/tickets" element={<TicketsPage role={ROLES.TEACHER} />} />
           <Route path="/teacher/tickets/:ticketId" element={<TicketDetailsPage role={ROLES.TEACHER} />} />
@@ -89,10 +90,11 @@ export default function App() {
         </Route>
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.STAFF]} />}>
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
-          <Route path="/staff/today-buses" element={<TodayBusesPage role={ROLES.STAFF} />} />
+          <Route path="/staff/available-buses" element={<TodayBusesPage role={ROLES.STAFF} />} />
+          <Route path="/staff/today-buses" element={<Navigate to="/staff/available-buses" replace />} />
           <Route path="/staff/buses/:id" element={<BusDetailsPage role={ROLES.STAFF} />} />
           <Route path="/staff/routes" element={<RouteExplorerPage role={ROLES.STAFF} />} />
-          <Route path="/staff/reservations" element={<ReservationsPage role={ROLES.STAFF} />} />
+          <Route path="/staff/reservations" element={<Navigate to="/staff/available-buses?tab=reservations" replace />} />
           <Route path="/staff/reservations/new" element={<ReservationFlowPage role={ROLES.STAFF} />} />
           <Route path="/staff/tickets" element={<TicketsPage role={ROLES.STAFF} />} />
           <Route path="/staff/tickets/:ticketId" element={<TicketDetailsPage role={ROLES.STAFF} />} />
@@ -118,7 +120,6 @@ export default function App() {
         <Route element={<RoleBasedRoute allowedRoles={[ROLES.ADMIN]} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/buses" element={<BusManagementPage />} />
-          <Route path="/admin/routes" element={<RouteManagementPage />} />
           <Route path="/admin/schedules" element={<ScheduleManagementPage />} />
           <Route path="/admin/reservations" element={<ReservationManagementPage />} />
           <Route path="/admin/users" element={<UserManagementPage />} />

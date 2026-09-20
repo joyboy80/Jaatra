@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   getAdminAssignments, getAdminBuses, getAdminDrivers, getAdminReservations, getAdminRoutes, getAdminSchedules, getAdminUsers,
-  getAlerts, getAnalytics, getMaintenance, getOverview, putAdminBus, putAdminDriver, putAdminRoute,
+  getAlerts, getAnalytics, getMaintenance, getOverview, putAdminBus, putAdminDriver, putAdminReservation, putAdminRoute,
   putAdminAssignment, putAdminSchedule, putAdminUser, putMaintenance, removeAdminAssignment, removeAdminBus, removeAdminRoute, removeAdminSchedule,
   getPredictionsOccupancy, getPredictionsInsights, getRecommendationsAllocations
 } from "../controllers/transportController.js";
@@ -15,8 +15,15 @@ router.get("/buses", getAdminBuses);
 router.put("/buses", putAdminBus);
 router.delete("/buses/:id", removeAdminBus);
 router.get("/routes", getAdminRoutes);
-router.put("/routes", putAdminRoute);
-router.delete("/routes/:id", removeAdminRoute);
+const routeMutationBlocked = (_req, res) => res.status(405).json({
+  success: false,
+  error: {
+    code: "METHOD_NOT_ALLOWED",
+    message: "Routes are predefined in the database and cannot be modified or deleted.",
+  },
+});
+router.put("/routes", routeMutationBlocked);
+router.delete("/routes/:id", routeMutationBlocked);
 router.get("/schedules", getAdminSchedules);
 router.put("/schedules", putAdminSchedule);
 router.delete("/schedules/:id", removeAdminSchedule);
@@ -24,6 +31,7 @@ router.get("/assignments", getAdminAssignments);
 router.put("/assignments", putAdminAssignment);
 router.delete("/assignments/:id", removeAdminAssignment);
 router.get("/reservations", getAdminReservations);
+router.put("/reservations/:id", putAdminReservation);
 router.get("/users", getAdminUsers);
 router.put("/users/:id", putAdminUser);
 router.get("/drivers", getAdminDrivers);

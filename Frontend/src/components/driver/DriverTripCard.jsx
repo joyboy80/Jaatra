@@ -37,6 +37,18 @@ export default function DriverTripCard({ trip, passengerCount = 0 }) {
           <p className="text-xs text-safar-gray">Passengers</p>
         </div>
       </div>
+      {trip.stops?.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1 text-xs text-safar-gray">
+          <span className="font-semibold text-safar-ink">Stoppages:</span>
+          <span>{trip.stops[0]}</span>
+          <ArrowRight className="h-3 w-3 text-safar-teal inline shrink-0" />
+          <span>{trip.stops[1]}</span>
+          <ArrowRight className="h-3 w-3 text-safar-teal inline shrink-0" />
+          <span>... ({trip.stops.length} stops)</span>
+          <ArrowRight className="h-3 w-3 text-safar-teal inline shrink-0" />
+          <span className="font-medium text-safar-ink">{trip.stops.at(-1)}</span>
+        </div>
+      )}
       <Link
         className="focus-ring mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-safar-ink ring-1 ring-slate-200 transition hover:bg-safar-mint sm:w-auto"
         to="/driver/live-trip"

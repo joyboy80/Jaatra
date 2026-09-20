@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assertProfilePortalAccess } from "../src/utils/driverAccess.js";
-import { normalizeDriverEmail, validateDriverForAssignment } from "../src/services/transportService.js";
+import { formatDriverDisplayName, normalizeDriverEmail, validateDriverForAssignment } from "../src/services/transportService.js";
 
 const driver = { id: "driver-profile", email: "driver@example.com", user_type: "DRIVER", is_verified: true, is_active: true, approval_status: "PENDING" };
 
@@ -24,4 +24,11 @@ test("assignment distinguishes unknown, non-Driver, unverified, and inactive ema
   assert.throws(() => validateDriverForAssignment({ ...driver, user_type: "STAFF" }), (error) => error.code === "NOT_A_DRIVER");
   assert.throws(() => validateDriverForAssignment({ ...driver, is_verified: false }), (error) => error.code === "DRIVER_NOT_VERIFIED");
   assert.throws(() => validateDriverForAssignment({ ...driver, is_active: false }), (error) => error.code === "DRIVER_INACTIVE");
+});
+
+test("formatDriverDisplayName prioritizes stored name and gracefully falls back to email username", () => {
+  assert.equal(formatDriverDisplayName({ full_name: "Abdul Karim", email: "abdul@cuet.ac.bd" }), "Abdul Karim");
+  assert.equal(formatDriverDisplayName({ email: "rahim@cuet.ac.bd" }), "Rahim");
+  assert.equal(formatDriverDisplayName({ email: "rahim.ahmed@cuet.ac.bd" }), "Rahim Ahmed");
+  assert.equal(formatDriverDisplayName(null, "mizan@cuet.ac.bd"), "Mizan");
 });

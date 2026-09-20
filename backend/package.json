@@ -13,7 +13,8 @@
     "test": "node --test --experimental-test-isolation=none",
     "check": "node --check src/server.js && node --check src/app.js",
     "email:check": "node scripts/check-email.js",
-    "admin:create": "node scripts/create-admin.js"
+    "admin:create": "node scripts/create-admin.js",
+    "routes:seed": "node scripts/seed-routes.js"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",

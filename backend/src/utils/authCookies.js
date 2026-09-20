@@ -42,31 +42,37 @@ export function readSessionCookies(req) {
   };
 }
 
-export function setSessionCookies(res, session, { remember = false } = {}) {
+export function setSessionCookies(res, session, { remember = true } = {}) {
   const accessMaxAge = Number(session.expiresIn || session.expires_in || 3600);
+  const refreshMaxAge = 60 * 60 * 24 * 30; // 30 days
   appendCookies(res, [
     serializeCookie(ACCESS_COOKIE, session.accessToken || session.access_token, {
       path: "/api",
       ...(remember ? { maxAge: accessMaxAge } : {}),
     }),
     serializeCookie(REFRESH_COOKIE, session.refreshToken || session.refresh_token, {
-      path: "/api/auth",
-      ...(remember ? { maxAge: 60 * 60 * 24 * 30 } : {}),
+      path: "/api",
+      ...(remember ? { maxAge: refreshMaxAge } : {}),
     }),
     serializeCookie(REMEMBER_COOKIE, remember ? "1" : "", {
-      path: "/api/auth",
-      ...(remember ? { maxAge: 60 * 60 * 24 * 30 } : { maxAge: 0, expires: new Date(0) }),
+      path: "/api",
+      ...(remember ? { maxAge: refreshMaxAge } : { maxAge: 0, expires: new Date(0) }),
     }),
   ]);
 }
 
-export function clearSessionCookies(res) {
+export function clearSessionCookies(res, { allPaths = false } = {}) {
   const expired = new Date(0);
-  appendCookies(res, [
-    serializeCookie(ACCESS_COOKIE, "", { path: "/api", maxAge: 0, expires: expired }),
-    serializeCookie(REFRESH_COOKIE, "", { path: "/api/auth", maxAge: 0, expires: expired }),
-    serializeCookie(REMEMBER_COOKIE, "", { path: "/api/auth", maxAge: 0, expires: expired }),
-  ]);
+  const cookiePaths = allPaths ? ["/api", "/api/auth", "/"] : ["/api"];
+  const cookies = [];
+  for (const path of cookiePaths) {
+    cookies.push(
+      serializeCookie(ACCESS_COOKIE, "", { path, maxAge: 0, expires: expired }),
+      serializeCookie(REFRESH_COOKIE, "", { path, maxAge: 0, expires: expired }),
+      serializeCookie(REMEMBER_COOKIE, "", { path, maxAge: 0, expires: expired }),
+    );
+  }
+  appendCookies(res, cookies);
 }
 
 export function publicSession(session) {

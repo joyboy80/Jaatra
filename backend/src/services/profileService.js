@@ -13,6 +13,7 @@ export function serializeProfile(profile) {
     userType: profile.user_type,
     // Legacy UI compatibility only; authorization always uses userType.
     role: profile.user_type === "TRANSPORT_ADMIN" ? "ADMIN" : profile.user_type,
+    batch: profile.batch,
     departmentCode: profile.department_code,
     department: profile.department_name,
     institutionalId: profile.institutional_id,
@@ -57,7 +58,16 @@ export async function getProfileById(profileId) {
 }
 
 export async function createProfile(profile) {
-  const { data, error } = await getSupabaseAdmin().from("profiles").insert(profile).select("*").single();
+  let insertPayload = { ...profile };
+  let { data, error } = await getSupabaseAdmin().from("profiles").insert(insertPayload).select("*").single();
+
+  if (error && (error.code === "PGRST204" || error.message?.includes("batch")) && Object.hasOwn(insertPayload, "batch")) {
+    const { batch, ...withoutBatch } = insertPayload;
+    const fallback = await getSupabaseAdmin().from("profiles").insert(withoutBatch).select("*").single();
+    if (!fallback.error) return { ...fallback.data, batch };
+    error = fallback.error;
+  }
+
   if (error) throw profileError(error, "create", "An account with that email or university identifier already exists.");
   return data;
 }

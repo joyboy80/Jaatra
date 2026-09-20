@@ -47,6 +47,15 @@ test("remembered sessions receive bounded persistent cookies", () => {
   assert.match(res.headers["Set-Cookie"][1], /Max-Age=2592000/);
 });
 
+test("default sessions receive bounded persistent cookies on /api path", () => {
+  const res = response();
+  setSessionCookies(res, session);
+  assert.match(res.headers["Set-Cookie"][0], /Max-Age=3600/);
+  assert.match(res.headers["Set-Cookie"][0], /Path=\/api/);
+  assert.match(res.headers["Set-Cookie"][1], /Max-Age=2592000/);
+  assert.match(res.headers["Set-Cookie"][1], /Path=\/api/);
+});
+
 test("public session metadata never contains bearer credentials", () => {
   const result = publicSession(session);
   assert.deepEqual(result, { expiresAt: session.expiresAt, expiresIn: 3600, tokenType: "bearer" });

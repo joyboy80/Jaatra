@@ -1,7 +1,12 @@
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { getDashboardForRole } from "../../utils/roles";
 
 export default function LandingPage() {
+  const { isAuthenticated, user } = useAuth();
+  const dashboardPath = user ? (user.destination || getDashboardForRole(user.role)) : "/login";
+
   // Use scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -19,10 +24,10 @@ export default function LandingPage() {
         </div>
         <div>
           <Link
-            to="/login"
+            to={isAuthenticated ? dashboardPath : "/login"}
             className="px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 font-medium transition-all duration-300"
           >
-            Sign In
+            {isAuthenticated ? "Dashboard" : "Sign In"}
           </Link>
         </div>
       </nav>
@@ -52,12 +57,12 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <Link
-              to="/login"
+              to={isAuthenticated ? dashboardPath : "/login"}
               className="group relative px-9 py-4 bg-safar-teal text-white rounded-full font-semibold shadow-glow hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden text-base"
             >
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
               <span className="relative flex items-center gap-2">
-                Explore Our Site
+                {isAuthenticated ? "Open Dashboard" : "Explore Our Site"}
                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>

@@ -18,14 +18,6 @@ export async function getAdminRoutes() {
   return (await apiRequest("/admin/transport/routes")).routes;
 }
 
-export async function saveRoute(input) {
-  return (await apiRequest("/admin/transport/routes", { method: "PUT", body: input })).route;
-}
-
-export async function deleteRoute(id) {
-  return apiRequest(`/admin/transport/routes/${encodeURIComponent(id)}`, { method: "DELETE" });
-}
-
 export async function getAdminSchedules() {
   return (await apiRequest("/admin/transport/schedules")).schedules;
 }
@@ -50,8 +42,23 @@ export async function cancelAssignment(id) {
   return apiRequest(`/admin/transport/assignments/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
-export async function getAdminReservations() {
-  return (await apiRequest("/admin/transport/reservations")).reservations;
+export async function getAdminReservations(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.date) params.append("date", filters.date);
+  if (filters.bus && filters.bus !== "All") params.append("bus", filters.bus);
+  if (filters.route && filters.route !== "All") params.append("route", filters.route);
+  if (filters.role && filters.role !== "All") params.append("role", filters.role);
+  if (filters.status && filters.status !== "All") params.append("status", filters.status);
+  if (filters.boardingStatus && filters.boardingStatus !== "All") params.append("boardingStatus", filters.boardingStatus);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return (await apiRequest(`/admin/transport/reservations${query}`)).reservations;
+}
+
+export async function updateAdminReservation(bookingId, updates) {
+  return (await apiRequest(`/admin/transport/reservations/${encodeURIComponent(bookingId)}`, {
+    method: "PUT",
+    body: updates,
+  })).reservation;
 }
 
 export async function getAdminUsers() {

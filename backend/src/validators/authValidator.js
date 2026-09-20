@@ -26,7 +26,7 @@ export const DEPARTMENTS = Object.freeze({
 const PUBLIC_ROLES = new Set([ROLES.STUDENT, ROLES.TEACHER, ROLES.STAFF, ROLES.DRIVER]);
 const GENDERS = new Set(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"]);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const STUDENT_EMAIL_PATTERN = /^u(\d{2})(0[1-9]|1[0-2])(\d{3})@student\.cuet\.ac\.bd$/i;
+const STUDENT_EMAIL_PATTERN = /^u(\d{2})(\d{2})(\d{3})@(student\.)?cuet\.ac\.bd$/i;
 const PHONE_PATTERN = /^(?:\+?880|0)1[3-9]\d{8}$/;
 const OTP_PATTERN = /^\d{6}$/;
 
@@ -36,6 +36,23 @@ function text(value) {
 
 function assertEmail(email) {
   if (!EMAIL_PATTERN.test(email)) throw new AppError(400, "Enter a valid email address.", "VALIDATION_ERROR");
+}
+
+export function parseStudentEmail(email = "") {
+  const match = text(email).toLowerCase().match(STUDENT_EMAIL_PATTERN);
+  if (!match) return null;
+  const [, batchDigits, departmentCode, studentId] = match;
+  const departmentName = DEPARTMENTS[departmentCode] || null;
+  const batchNum = parseInt(batchDigits, 10);
+  const batch = batchNum >= 50 ? `19${batchDigits}` : `20${batchDigits}`;
+  return {
+    batch,
+    departmentCode,
+    departmentName,
+    studentId,
+    institutionalId: `u${batchDigits}${departmentCode}${studentId}`,
+    isValidDepartment: Boolean(departmentName),
+  };
 }
 
 function resolveDepartment(input = {}) {
@@ -65,7 +82,6 @@ export function validateRegistration(input = {}) {
   const userType = text(input.userType || input.role).toUpperCase();
   const gender = text(input.gender).toUpperCase() || "PREFER_NOT_TO_SAY";
   const phone = text(input.phone).replace(/[\s()-]/g, "");
-  const { departmentCode, departmentName } = resolveDepartment(input);
 
   assertEmail(email);
   validatePassword(password, Object.hasOwn(input, "confirmPassword") ? input.confirmPassword : undefined);
@@ -79,15 +95,23 @@ export function validateRegistration(input = {}) {
 
   let studentId = null;
   let institutionalId = null;
+  let batch = null;
+  let departmentCode = null;
+  let departmentName = null;
+
   if (userType === ROLES.STUDENT) {
-    const match = email.match(STUDENT_EMAIL_PATTERN);
-    if (!match) throw new AppError(400, "Use a valid CUET student email such as u2204094@student.cuet.ac.bd.", "INVALID_STUDENT_EMAIL");
-    const [, , emailDepartmentCode, emailStudentId] = match;
-    studentId = text(input.studentId);
-    if (!/^\d{3}$/.test(studentId)) throw new AppError(400, "Student ID must contain exactly 3 digits.", "INVALID_STUDENT_ID");
-    if (emailDepartmentCode !== departmentCode) throw new AppError(400, "The selected department does not match the student email.", "DEPARTMENT_MISMATCH");
-    if (emailStudentId !== studentId) throw new AppError(400, "Student ID does not match the student email.", "STUDENT_ID_MISMATCH");
-    institutionalId = email.slice(0, email.indexOf("@"));
+    const parsed = parseStudentEmail(email);
+    if (!parsed) {
+      throw new AppError(400, "Use a valid CUET student email such as u2204012@cuet.ac.bd.", "INVALID_STUDENT_EMAIL");
+    }
+    if (!parsed.isValidDepartment) {
+      throw new AppError(400, "Invalid department code in student email.", "INVALID_DEPARTMENT_CODE");
+    }
+    batch = parsed.batch;
+    departmentCode = parsed.departmentCode;
+    departmentName = parsed.departmentName;
+    studentId = parsed.studentId;
+    institutionalId = parsed.institutionalId;
   }
 
   return {
@@ -97,6 +121,7 @@ export function validateRegistration(input = {}) {
     userType,
     gender,
     phone,
+    batch,
     studentId,
     institutionalId,
     departmentCode,

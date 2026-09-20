@@ -20,8 +20,33 @@ export const departments = [
   ["12", "Water Resources Engineering"],
 ].map(([value, label]) => ({ value, label }));
 
+export const departmentMap = Object.fromEntries(
+  departments.map((item) => [item.value, item.label])
+);
+
+export const STUDENT_EMAIL_PATTERN = /^u(\d{2})(\d{2})(\d{3})@(student\.)?cuet\.ac\.bd$/i;
+
+export function parseStudentEmail(email = "") {
+  if (typeof email !== "string") return null;
+  const match = email.trim().toLowerCase().match(STUDENT_EMAIL_PATTERN);
+  if (!match) return null;
+  const [, batchDigits, departmentCode, studentId] = match;
+  const department = departmentMap[departmentCode] || null;
+  const batchNum = parseInt(batchDigits, 10);
+  const batch = batchNum >= 50 ? `19${batchDigits}` : `20${batchDigits}`;
+  return {
+    batch,
+    departmentCode,
+    department,
+    studentId,
+    institutionalId: `u${batchDigits}${departmentCode}${studentId}`,
+    isValidDepartment: Boolean(department),
+  };
+}
+
 export const genderOptions = [
   { value: "MALE", label: "Male" },
   { value: "FEMALE", label: "Female" },
   { value: "OTHER", label: "Other" },
 ];
+

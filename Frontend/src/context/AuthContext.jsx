@@ -12,7 +12,15 @@ export function AuthProvider({ children }) {
     let active = true;
     authService.restoreSession()
       .then((restored) => {
-        if (active) setAuth(restored);
+        if (!active) return;
+        if (restored?.user) {
+          setAuth(restored);
+        } else if (restored?.expired) {
+          setAuth(null);
+          setToast({ type: "info", message: "Your session expired. Please sign in again." });
+        } else {
+          setAuth(null);
+        }
       })
       .catch(() => {
         if (active) setAuth(null);

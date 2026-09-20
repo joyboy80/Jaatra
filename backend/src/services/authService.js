@@ -104,6 +104,7 @@ export async function registerUser(input) {
       auth_user_id: authAccount.user.id,
       user_type: input.userType,
       full_name: input.fullName,
+      batch: input.batch,
       department_code: input.departmentCode,
       department_name: input.departmentName,
       institutional_id: input.institutionalId,

@@ -1,4 +1,4 @@
-import { BusFront, CalendarCheck, Clock, Ticket, Users } from "lucide-react";
+import { BusFront, CalendarCheck, Clock, GraduationCap, Ticket, Users } from "lucide-react";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import StatCard from "../../components/common/StatCard";
@@ -68,6 +68,42 @@ export default function PortalDashboard({ role }) {
           title={`${copy.title}: ${user.name}`}
           description={copy.description}
         />
+
+        {!error && role === "student" && (user.department || user.batch || user.studentId) && (
+          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-safar-mint text-safar-teal">
+                  <GraduationCap className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-safar-ink">Student Identity</h3>
+                  <p className="text-xs text-safar-gray">Verified student record</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                {user.department && (
+                  <div className="rounded-lg bg-slate-100 px-3 py-1.5 dark:bg-slate-800">
+                    <span className="text-slate-500">Department:</span>{" "}
+                    <span className="font-bold text-safar-ink">{user.department}</span>
+                  </div>
+                )}
+                {user.batch && (
+                  <div className="rounded-lg bg-slate-100 px-3 py-1.5 dark:bg-slate-800">
+                    <span className="text-slate-500">Batch:</span>{" "}
+                    <span className="font-bold text-safar-ink">{user.batch}</span>
+                  </div>
+                )}
+                {user.studentId && (
+                  <div className="rounded-lg bg-slate-100 px-3 py-1.5 dark:bg-slate-800">
+                    <span className="text-slate-500">Student ID:</span>{" "}
+                    <span className="font-bold text-safar-ink">{user.studentId}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <DashboardBusCarousel />
 

@@ -24,7 +24,7 @@ export default function ReservationFlowPage({ role }) {
   const [allTrips, setAllTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busId, setBusId] = useState(searchParams.get("busId") || "");
-  const [date, setDate] = useState(toDateInputValue());
+  const [date, setDate] = useState(searchParams.get("date") || toDateInputValue());
   const [tripId, setTripId] = useState("");
   const [selectedSeat, setSelectedSeat] = useState("");
   const [reservedSeats, setReservedSeats] = useState([]);
@@ -130,7 +130,7 @@ export default function ReservationFlowPage({ role }) {
               </Link>
               <Link
                 className="focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
-                to={`/${role}/reservations`}
+                to={`/${role}/available-buses?tab=reservations`}
               >
                 Reservation History
               </Link>
@@ -247,7 +247,7 @@ export default function ReservationFlowPage({ role }) {
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
               <Link
                 className="focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
-                to={`/${role}/today-buses`}
+                to={`/${role}/available-buses`}
               >
                 Cancel
               </Link>

@@ -58,14 +58,14 @@ export const verifyOtp = asyncHandler(async (req, res) => {
 
 export const login = asyncHandler(async (req, res) => {
   const result = await loginUser(validateLogin(req.body));
-  setSessionCookies(res, result.session, { remember: Boolean(req.body.remember) });
+  setSessionCookies(res, result.session, { remember: req.body.remember !== false });
   return sendSuccess(res, { data: { user: result.user, session: publicSession(result.session) }, message: "Login successful." });
 });
 
 export const logout = asyncHandler(async (req, res) => {
   const accessToken = readSessionCookies(req).accessToken || readBearerToken(req.headers.authorization);
   if (accessToken) await logoutUser(accessToken).catch(() => undefined);
-  clearSessionCookies(res);
+  clearSessionCookies(res, { allPaths: true });
   return sendSuccess(res, { message: "Logout successful." });
 });
 
@@ -86,9 +86,9 @@ export const refresh = asyncHandler(async (req, res) => {
     result = await refreshUserSession(refreshToken);
   } catch (error) {
     clearSessionCookies(res);
-    throw error;
+    throw new AppError(401, "Your session expired. Please sign in again.", "SESSION_EXPIRED");
   }
-  setSessionCookies(res, result.session, { remember: cookies.remember });
+  setSessionCookies(res, result.session, { remember: cookies.remember !== false });
   return sendSuccess(res, { data: { user: result.user, session: publicSession(result.session) }, message: "Session refreshed." });
 });
 

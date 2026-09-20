@@ -1,4 +1,4 @@
-import { AlertTriangle, Armchair, BusFront, CalendarDays, CircleAlert, ClipboardCheck, Siren, Wrench } from "lucide-react";
+import { AlertTriangle, Armchair, BusFront, CalendarDays, CircleAlert, ClipboardCheck, Siren, Users, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminStatusBadge from "../../components/admin/AdminStatusBadge";
@@ -23,10 +23,10 @@ export default function AdminDashboard() {
     [BusFront, "Active Buses", stats.activeBuses || 0, "Available for operations"],
     [CalendarDays, "Today's Trips", stats.todayTrips || 0, "Scheduled departures"],
     [ClipboardCheck, "Reservations", stats.totalReservations || 0, "Active bookings"],
+    [Users, "University Users", stats.totalUsers || 0, "Registered accounts", "/admin/users"],
     [Armchair, "Available Seats", stats.availableSeats || 0, "Across all buses"],
     [AlertTriangle, "Delayed Buses", stats.delayedBuses || 0, "Needs monitoring"],
     [Wrench, "Maintenance", stats.maintenanceBuses || 0, "Under maintenance"],
-    [Siren, "Emergencies", stats.emergencyReports || 0, "Driver SOS reports"],
   ];
 
   return (
@@ -43,7 +43,15 @@ export default function AdminDashboard() {
         {error && <ErrorState title="Control center unavailable" message={error} />}
 
         {!error && <><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {statCards.map(([icon, label, value, helper]) => <StatCard key={label} icon={icon} label={label} value={value} helper={helper} />)}
+          {statCards.map(([icon, label, value, helper, to]) => (
+            to ? (
+              <Link key={label} to={to} className="group block focus-ring rounded-2xl transition duration-200 hover:-translate-y-0.5">
+                <StatCard icon={icon} label={label} value={value} helper={helper} />
+              </Link>
+            ) : (
+              <StatCard key={label} icon={icon} label={label} value={value} helper={helper} />
+            )
+          ))}
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">

@@ -109,6 +109,45 @@ export default function LiveTripPage() {
           <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-lg font-bold text-safar-ink">{trip.route}</h2><p className="mt-1 text-sm text-safar-gray">{trip.departureTime} - {trip.arrivalTime} | {liveBus.speed} km/h</p></div><div className="grid gap-2 sm:grid-cols-3"><Button icon={CirclePlay} disabled={trip.status === "In Progress" || trip.status === "Completed"} onClick={() => setStatus("In Progress")}>Start Trip</Button><Link className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-safar-ink shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50" to="/driver/delay"><CirclePause className="h-4 w-4" /> Report Delay</Link><Button variant="danger" icon={Flag} disabled={trip.status === "Completed"} onClick={() => setEndOpen(true)}>End Trip</Button></div></div>
           </section>
+
+          {trip.stops?.length > 0 && (
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-bold text-safar-ink flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-safar-teal" />
+                  Route Stoppages in Order ({trip.stops.length} Stops)
+                </h3>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-safar-mint text-safar-navy">
+                  Database Verified
+                </span>
+              </div>
+              <p className="text-xs text-safar-gray mb-4">
+                Follow this authoritative stoppage sequence during your scheduled trip:
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {trip.stops.map((stop, index) => {
+                  const isCurrent = liveBus?.nextStop === stop;
+                  return (
+                    <div
+                      key={stop}
+                      className={`flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-semibold border transition ${
+                        isCurrent
+                          ? "bg-teal-50 border-safar-teal text-safar-teal shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-safar-ink"
+                      }`}
+                    >
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                        isCurrent ? "bg-safar-teal text-white" : "bg-white text-safar-gray border border-slate-200"
+                      }`}>
+                        {index + 1}
+                      </span>
+                      <span className="truncate">{stop}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </>}
       </div>
       <Modal open={endOpen} title="Complete this trip?" description="The trip will be marked completed and its live GPS status will close." confirmLabel="Complete Trip" onClose={() => setEndOpen(false)} onConfirm={() => setStatus("Completed")} />

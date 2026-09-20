@@ -34,6 +34,7 @@ import {
   saveAdminAssignment,
   tripSummary,
   updateAdminDriver,
+  updateAdminReservation,
   updateAdminUser,
   updateDriverLocation,
   updateDriverTrip,
@@ -261,7 +262,22 @@ export const removeAdminSchedule = asyncHandler(async (req, res) => { await dele
 export const getAdminAssignments = asyncHandler(async (_req, res) => sendSuccess(res, { data: { assignments: await adminAssignments() } }));
 export const putAdminAssignment = asyncHandler(async (req, res) => sendSuccess(res, { status: 201, data: { assignment: await saveAdminAssignment(req.body) } }));
 export const removeAdminAssignment = asyncHandler(async (req, res) => { await cancelAdminAssignment(req.params.id); return sendSuccess(res, { message: "Assignment cancelled." }); });
-export const getAdminReservations = asyncHandler(async (_req, res) => sendSuccess(res, { data: { reservations: await listReservations(null, { all: true }) } }));
+export const getAdminReservations = asyncHandler(async (req, res) => {
+  const { date, busId, bus, routeId, route, role, status, boardingStatus } = req.query;
+  const reservations = await listReservations(null, {
+    all: true,
+    date,
+    busId,
+    busName: bus,
+    routeId,
+    route,
+    role,
+    status,
+    boardingStatus,
+  });
+  return sendSuccess(res, { data: { reservations } });
+});
+export const putAdminReservation = asyncHandler(async (req, res) => sendSuccess(res, { data: { reservation: await updateAdminReservation(req.params.id, req.body) } }));
 export const getAdminUsers = asyncHandler(async (_req, res) => sendSuccess(res, { data: { users: await adminUsers() } }));
 export const putAdminUser = asyncHandler(async (req, res) => sendSuccess(res, { data: { user: await updateAdminUser(req.params.id, req.body) } }));
 export const getAdminDrivers = asyncHandler(async (_req, res) => sendSuccess(res, { data: { drivers: await adminDrivers() } }));

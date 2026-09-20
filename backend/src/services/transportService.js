@@ -15,10 +15,115 @@ const ROLE_LABELS = {
   TRANSPORT_ADMIN: "Transport Authority",
 };
 
+export const PREDEFINED_ROUTES = [
+  {
+    id: "CUET_STATION_DIRECT",
+    name: "Route 1 — Direct via Flyover",
+    direction: "CUET → Station",
+    start: "CUET Campus",
+    destination: "Station",
+    stops: [
+      "CUET Campus",
+      "Noapara",
+      "Rastar Matha",
+      "Bahaddarhat",
+      "Muradpur Flyover",
+      "Lalkhan Bazar",
+      "Station",
+    ],
+    estimatedMinutes: 75,
+  },
+  {
+    id: "CUET_STATION_GEC",
+    name: "Route 2 — via GEC",
+    direction: "CUET → Station",
+    start: "CUET Campus",
+    destination: "Station",
+    stops: [
+      "CUET Campus",
+      "Noapara",
+      "Rastar Matha",
+      "Bahaddarhat",
+      "Muradpur",
+      "2 No. Gate",
+      "GEC",
+      "Wasa",
+      "Lalkhan Bazar",
+      "Station",
+    ],
+    estimatedMinutes: 75,
+  },
+  {
+    id: "CUET_STATION_FLYOVER_GEC",
+    name: "Route 3 — via Flyover & GEC",
+    direction: "CUET → Station",
+    start: "CUET Campus",
+    destination: "Station",
+    stops: [
+      "CUET Campus",
+      "Noapara",
+      "Rastar Matha",
+      "Bahaddarhat",
+      "Muradpur Flyover",
+      "GEC",
+      "Wasa",
+      "Lalkhan Bazar",
+      "Station",
+    ],
+    estimatedMinutes: 75,
+  },
+  {
+    id: "STATION_CUET_BAHADDARHAT",
+    name: "Route 4 — Return via Bahaddarhat",
+    direction: "Station → CUET",
+    start: "Station",
+    destination: "CUET",
+    stops: [
+      "Station",
+      "Lalkhan Bazar",
+      "Flyover",
+      "Bahaddarhat",
+      "Rastar Matha",
+      "Noapara",
+      "CUET",
+    ],
+    estimatedMinutes: 80,
+  },
+  {
+    id: "STATION_CUET_GEC",
+    name: "Route 5 — Return via GEC",
+    direction: "Station → CUET",
+    start: "Station",
+    destination: "CUET Campus",
+    stops: [
+      "Station",
+      "Lalkhan Bazar",
+      "Wasa",
+      "GEC",
+      "2 No. Gate",
+      "Muradpur",
+      "Bahaddarhat",
+      "Rastar Matha",
+      "Noapara",
+      "CUET Campus",
+    ],
+    estimatedMinutes: 80,
+  },
+];
+
+const PREDEFINED_ORDER = {
+  CUET_STATION_DIRECT: 1,
+  CUET_STATION_GEC: 2,
+  CUET_STATION_FLYOVER_GEC: 3,
+  STATION_CUET_BAHADDARHAT: 4,
+  STATION_CUET_GEC: 5,
+};
+
 export const SHIFT_DEFINITIONS = {
-  MORNING: { outbound: { route: "CUET to Station", departureTime: "05:45 AM" }, return: { route: "Station to CUET", departureTime: "07:10 AM" } },
-  NOON: { outbound: { route: "CUET to Kaptai Rastar Matha", departureTime: "01:30 PM" }, return: { route: "Kaptai Rastar Matha to CUET", departureTime: "02:15 PM" } },
-  AFTERNOON: { outbound: { route: "CUET to Station", departureTime: "04:15 PM" }, return: { route: "Station to CUET", departureTime: "08:45 PM" } },
+  MORNING: { outbound: { route: "CUET Campus - Station", routeId: "CUET_STATION_DIRECT", departureTime: "05:45 AM", arrivalTime: "07:00 AM" }, return: { route: "Station - CUET Campus", routeId: "STATION_CUET_GEC", departureTime: "07:10 AM", arrivalTime: "08:30 AM" } },
+  NOON: { outbound: { route: "CUET Campus - Rastar Matha", routeId: "CUET_STATION_DIRECT", departureTime: "01:30 PM", arrivalTime: "02:20 PM" }, return: { route: "Rastar Matha - CUET Campus", routeId: "STATION_CUET_BAHADDARHAT", departureTime: "02:20 PM", arrivalTime: "03:10 PM" } },
+  AFTERNOON: { outbound: { route: "CUET Campus - Station", routeId: "CUET_STATION_DIRECT", departureTime: "04:15 PM", arrivalTime: "06:00 PM" }, return: { route: "Station - CUET Campus", routeId: "STATION_CUET_GEC", departureTime: "08:45 PM", arrivalTime: "10:30 PM" } },
+  SATURDAY_AFTERNOON: { outbound: { route: "CUET Campus - Station", routeId: "CUET_STATION_DIRECT", departureTime: "02:30 PM", arrivalTime: "04:00 PM" }, return: { route: "Station - CUET Campus", routeId: "STATION_CUET_GEC", departureTime: "08:15 PM", arrivalTime: "10:00 PM" } },
 };
 const PASSENGER_GROUPS = ["ALL_STUDENTS", "FEMALE_STUDENTS", "ALL_TEACHERS", "ALL_STAFF", "ALL_USERS"];
 const GROUP_LABELS = { ALL_STUDENTS: "All Students", FEMALE_STUDENTS: "Female Students", ALL_TEACHERS: "All Teachers", ALL_STAFF: "All Staff", ALL_USERS: "All Passengers" };
@@ -82,6 +187,7 @@ export function serializeBus(row, reservedCount = 0) {
     type: row.category,
     capacity: row.capacity,
     route: row.route,
+    routeId: row.route_id || null,
     stops: row.stops || [],
     departureTime: row.departure_time,
     arrivalTime: row.arrival_time,
@@ -108,6 +214,7 @@ export function serializeTrip(row) {
     busCategory: bus?.category,
     capacity: bus?.capacity,
     route: row.route,
+    routeId: row.route_id || bus?.route_id || null,
     stops: row.stops || [],
     departureTime: row.departure_time,
     arrivalTime: row.arrival_time,
@@ -217,17 +324,47 @@ export async function listBuses(user, busId, date) {
 }
 
 export async function listRoutes() {
-  const { data, error } = await getSupabaseAdmin().from("transport_routes").select("*").order("id");
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from("transport_routes")
+    .select("*")
+    .in("id", PREDEFINED_ROUTES.map((r) => r.id));
+
   if (error) throw transportError(error, "read routes");
-  return (data || []).map((row) => ({
-    id: row.id,
-    name: row.name,
-    start: row.start_point,
-    destination: row.destination,
-    stops: row.stops || [],
-    assignedBusIds: row.assigned_bus_ids || [],
-    estimatedMinutes: row.estimated_minutes,
-  }));
+
+  const routesData = data && data.length > 0
+    ? data
+    : PREDEFINED_ROUTES.map((r) => ({
+        id: r.id,
+        name: r.name,
+        direction: r.direction,
+        start_point: r.start,
+        destination: r.destination,
+        stops: r.stops,
+        assigned_bus_ids: [],
+        estimated_minutes: r.estimatedMinutes,
+      }));
+
+  return routesData
+    .sort((a, b) => (PREDEFINED_ORDER[a.id] || 99) - (PREDEFINED_ORDER[b.id] || 99))
+    .map((row) => {
+      const predefined = PREDEFINED_ROUTES.find((r) => r.id === row.id);
+      const stops = Array.isArray(row.stops) && row.stops.length > 0 ? row.stops : (predefined?.stops || []);
+      const direction = row.direction || predefined?.direction || (row.name?.includes("Station - CUET") ? "Station → CUET" : "CUET → Station");
+
+      return {
+        id: row.id,
+        name: row.name || predefined?.name,
+        routeName: row.name || predefined?.name,
+        direction,
+        start: row.start_point || predefined?.start,
+        destination: row.destination || predefined?.destination,
+        stops,
+        stoppages: stops.map((name, index) => ({ name, order: index + 1 })),
+        assignedBusIds: row.assigned_bus_ids || [],
+        estimatedMinutes: row.estimated_minutes || predefined?.estimatedMinutes || 45,
+      };
+    });
 }
 
 export async function listTrips(user, date) {
@@ -240,12 +377,82 @@ export async function listTrips(user, date) {
   return (data || []).map(serializeTrip);
 }
 
-export async function listReservations(profileId, { all = false } = {}) {
+export async function listReservations(profileId, { all = false, date, busId, busName, routeId, route, role, status, boardingStatus } = {}) {
   let query = getSupabaseAdmin().from("reservations").select("*").order("created_at", { ascending: false });
-  if (!all) query = query.eq("profile_id", profileId);
+  if (!all && profileId) query = query.eq("profile_id", profileId);
+  if (date) query = query.eq("travel_date", date);
+  if (busId && busId !== "All") query = query.eq("bus_id", busId);
+  if (busName && busName !== "All") query = query.ilike("bus_name", `%${busName}%`);
+  if (routeId && routeId !== "All") query = query.eq("route_id", routeId);
+  if (route && route !== "All") query = query.ilike("route", `%${route}%`);
+  if (role && role !== "All") query = query.ilike("role_label", `%${role}%`);
+  if (status && status !== "All") query = query.eq("status", status === "Reserved" ? "Confirmed" : status);
+  if (boardingStatus && boardingStatus !== "All") query = query.eq("boarding_status", boardingStatus);
   const { data, error } = await query;
   if (error) throw transportError(error, "read reservations");
   return (data || []).map(serializeReservation);
+}
+
+export async function updateAdminReservation(bookingId, updates = {}) {
+  const admin = getSupabaseAdmin();
+  const { data: existing, error: lookupError } = await admin
+    .from("reservations")
+    .select("*")
+    .eq("id", bookingId)
+    .maybeSingle();
+
+  if (lookupError) throw transportError(lookupError, "lookup reservation");
+  if (!existing) throw new AppError(404, "Reservation not found.", "RESERVATION_NOT_FOUND");
+
+  const values = { updated_at: new Date().toISOString() };
+
+  if (updates.status !== undefined) {
+    let normalizedStatus = String(updates.status).trim();
+    if (normalizedStatus === "Reserved") normalizedStatus = "Confirmed";
+    const allowedStatuses = ["Confirmed", "Cancelled", "Used", "Expired"];
+    if (!allowedStatuses.includes(normalizedStatus)) {
+      throw new AppError(400, `Invalid reservation status. Allowed: ${allowedStatuses.join(", ")}`, "INVALID_STATUS");
+    }
+    values.status = normalizedStatus;
+    if (normalizedStatus === "Cancelled") {
+      values.cancelled_at = new Date().toISOString();
+      if (!updates.boardingStatus) values.boarding_status = "Cancelled";
+    } else if (normalizedStatus === "Used") {
+      if (!updates.boardingStatus && existing.boarding_status === "Not Boarded") {
+        values.boarding_status = "Boarded";
+      }
+    }
+  }
+
+  if (updates.boardingStatus !== undefined) {
+    const normalizedBoarding = String(updates.boardingStatus).trim();
+    const allowedBoarding = ["Not Boarded", "Boarded", "Cancelled"];
+    if (!allowedBoarding.includes(normalizedBoarding)) {
+      throw new AppError(400, `Invalid boarding status. Allowed: ${allowedBoarding.join(", ")}`, "INVALID_BOARDING_STATUS");
+    }
+    values.boarding_status = normalizedBoarding;
+    if (normalizedBoarding === "Boarded" && (!values.status || values.status === "Confirmed")) {
+      values.status = "Used";
+    }
+  }
+
+  const { data: updated, error: updateError } = await admin
+    .from("reservations")
+    .update(values)
+    .eq("id", bookingId)
+    .select("*")
+    .single();
+
+  if (updateError) throw transportError(updateError, "update reservation");
+
+  // Keep tickets table synchronized with reservation status
+  if (values.status) {
+    const ticketUpdates = { status: values.status };
+    if (values.status === "Used") ticketUpdates.used_at = new Date().toISOString();
+    await admin.from("tickets").update(ticketUpdates).eq("booking_id", bookingId);
+  }
+
+  return serializeReservation(updated);
 }
 
 export async function reservedSeats(user, tripId, travelDate) {
@@ -515,16 +722,94 @@ export function validateAdminBusInput(input, existing = {}) {
 
 export async function saveAdminBus(input) {
   const admin = getSupabaseAdmin();
-  const existingResult = input.id ? await admin.from("buses").select("*").eq("id", input.id).maybeSingle() : { data: null, error: null };
-  if (existingResult.error) throw transportError(existingResult.error, "read bus");
-  if (input.id && !existingResult.data) throw new AppError(404, "Bus not found.", "BUS_NOT_FOUND");
-  const row = validateAdminBusInput(input, existingResult.data || {});
-  const { data, error } = await admin.from("buses").upsert(row).select("*").single();
+  const busId = input.busId || input.id;
+  const routeId = input.routeId || input.route_id;
+
+  // 1. If busId is provided, validate that the bus exists in the database
+  let bus = null;
+  if (busId) {
+    const { data: existingBus, error: busErr } = await admin.from("buses").select("*").eq("id", busId).maybeSingle();
+    if (busErr) throw transportError(busErr, "read bus");
+    if (!existingBus) throw new AppError(404, "Selected bus does not exist in the database.", "BUS_NOT_FOUND");
+    bus = existingBus;
+  }
+
+  // 2. If routeId is provided, validate that the route exists in the database
+  let route = null;
+  if (routeId) {
+    const { data: existingRoute, error: routeErr } = await admin.from("transport_routes").select("*").eq("id", routeId).maybeSingle();
+    if (routeErr) throw transportError(routeErr, "read route");
+    if (!existingRoute) throw new AppError(404, "Selected route does not exist in the database.", "ROUTE_NOT_FOUND");
+    route = existingRoute;
+  }
+
+  // Authoritative values: use existing bus record as source of truth for name/number
+  const name = bus?.name || String(input.name || "").trim();
+  const number = bus?.number || String(input.number || "").trim();
+  const category = String(input.type || input.category || bus?.category || "Student Bus").trim();
+  const capacity = Number(input.capacity ?? bus?.capacity ?? 40);
+  const status = String(input.status || bus?.status || "On Time").trim();
+
+  // Authoritative route: derive from selected route record
+  const routeName = route ? (route.name || `${route.start_point} - ${route.destination}`) : String(input.route || bus?.route || "").trim();
+  const stops = route?.stops?.length ? route.stops : (input.stops?.length ? input.stops : (bus?.stops || (routeName ? routeName.split(" - ").map((s) => s.trim()) : [])));
+
+  const row = validateAdminBusInput({
+    id: bus?.id || input.id,
+    name,
+    number,
+    type: category,
+    capacity,
+    route: routeName,
+    stops,
+    status,
+    departureTime: input.departureTime || bus?.departure_time,
+    arrivalTime: input.arrivalTime || bus?.arrival_time,
+    assignedDriver: input.assignedDriver || bus?.assigned_driver_name,
+  }, bus || {});
+
+  let insertPayload = {
+    ...row,
+    route_id: route?.id || bus?.route_id || null,
+  };
+
+  let { data, error } = await admin.from("buses").upsert(insertPayload).select("*").single();
+
+  // Graceful fallback if migration 011_bus_route_id.sql has not been executed yet in Supabase
+  if (error && (error.code === "PGRST204" || error.message?.includes("route_id")) && Object.hasOwn(insertPayload, "route_id")) {
+    const { route_id, ...withoutRouteId } = insertPayload;
+    const retry = await admin.from("buses").upsert(withoutRouteId).select("*").single();
+    if (!retry.error) {
+      data = { ...retry.data, route_id };
+      error = null;
+    } else {
+      error = retry.error;
+    }
+  }
+
   if (error) throw transportError(error, "save bus");
+
+  // Sync assigned_bus_ids in transport_routes table
+  if (route) {
+    const currentBusIds = new Set(route.assigned_bus_ids || []);
+    if (!currentBusIds.has(data.id)) {
+      currentBusIds.add(data.id);
+      await admin.from("transport_routes").update({ assigned_bus_ids: Array.from(currentBusIds) }).eq("id", route.id).catch(() => {});
+    }
+    if (bus?.route_id && bus.route_id !== route.id) {
+      const { data: oldRoute } = await admin.from("transport_routes").select("assigned_bus_ids").eq("id", bus.route_id).maybeSingle();
+      if (oldRoute) {
+        const updatedOldBusIds = (oldRoute.assigned_bus_ids || []).filter((id) => id !== data.id);
+        await admin.from("transport_routes").update({ assigned_bus_ids: updatedOldBusIds }).eq("id", bus.route_id).catch(() => {});
+      }
+    }
+  }
+
   await admin.from("tracking_positions").upsert({
     bus_id: data.id, location_label: data.location_label, latitude: data.latitude, longitude: data.longitude,
     next_stop: data.next_stop, eta_minutes: data.eta_minutes, status: data.status,
-  });
+  }).catch(() => {});
+
   return serializeBus(data);
 }
 
@@ -534,20 +819,12 @@ export async function deleteAdminBus(busId) {
   return true;
 }
 
-export async function saveAdminRoute(input) {
-  const row = {
-    id: input.id || id("RTE"), name: input.name, start_point: input.start, destination: input.destination,
-    stops: input.stops || [], assigned_bus_ids: input.assignedBusIds || [], estimated_minutes: Number(input.estimatedMinutes),
-  };
-  const { data, error } = await getSupabaseAdmin().from("transport_routes").upsert(row).select("*").single();
-  if (error) throw transportError(error, "save route");
-  return { id: data.id, name: data.name, start: data.start_point, destination: data.destination, stops: data.stops, assignedBusIds: data.assigned_bus_ids, estimatedMinutes: data.estimated_minutes };
+export async function saveAdminRoute() {
+  throw new AppError(405, "Routes are predefined in the database and cannot be modified from the admin API.", "ROUTES_PREDEFINED");
 }
 
-export async function deleteAdminRoute(routeId) {
-  const { error } = await getSupabaseAdmin().from("transport_routes").delete().eq("id", routeId);
-  if (error) throw transportError(error, "delete route");
-  return true;
+export async function deleteAdminRoute() {
+  throw new AppError(405, "Routes are predefined in the database and cannot be deleted from the admin API.", "ROUTES_PREDEFINED");
 }
 
 function serializeSchedule(row) {
@@ -589,25 +866,99 @@ export async function deleteAdminSchedule(scheduleId) {
   return true;
 }
 
+export function formatDriverDisplayName(profileOrName, emailFallback = "") {
+  if (typeof profileOrName === "string" && profileOrName.trim()) {
+    return profileOrName.trim();
+  }
+  const fullName = profileOrName?.full_name || profileOrName?.fullName || profileOrName?.name;
+  if (fullName && String(fullName).trim()) {
+    return String(fullName).trim();
+  }
+  const email = profileOrName?.email || emailFallback;
+  if (email && String(email).trim()) {
+    const local = String(email).split("@")[0].trim();
+    return (
+      local
+        .replace(/[._-]+/g, " ")
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(" ") || "Driver"
+    );
+  }
+  return "Driver";
+}
+
 export function normalizeDriverEmail(value) {
   const email = String(value || "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError(400, "A valid Driver email is required.", "INVALID_DRIVER_EMAIL");
   return email;
 }
 
-function assignmentInput(input) {
+function assignmentInput(input, existingBus = null) {
   const serviceDateValue = String(input.serviceDate || "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(serviceDateValue)) throw new AppError(400, "A valid service date is required.", "INVALID_SERVICE_DATE");
   if (!SHIFT_DEFINITIONS[input.shift]) throw new AppError(400, "A valid daily shift is required.", "INVALID_SHIFT");
   if (!PASSENGER_GROUPS.includes(input.passengerGroup)) throw new AppError(400, "A valid passenger group is required.", "INVALID_PASSENGER_GROUP");
-  if (!String(input.busName || "").trim() || !String(input.busNumber || "").trim()) throw new AppError(400, "Bus name and bus number are required.", "VALIDATION_ERROR");
-  return { serviceDate: serviceDateValue, shift: input.shift, passengerGroup: input.passengerGroup, busName: input.busName.trim(), busNumber: input.busNumber.trim(), driverEmail: normalizeDriverEmail(input.driverEmail), status: input.status || "ACTIVE" };
+  const busName = String(existingBus?.name || input.busName || "").trim();
+  const busNumber = String(existingBus?.number || input.busNumber || "").trim();
+  if (!busName || !busNumber) throw new AppError(400, "Bus selection is required.", "VALIDATION_ERROR");
+  
+  const driverProfileId = String(input.driverProfileId || input.driverId || "").trim();
+  const driverEmail = input.driverEmail ? normalizeDriverEmail(input.driverEmail) : "";
+  if (!driverProfileId && !driverEmail) {
+    throw new AppError(400, "Driver selection is required.", "VALIDATION_ERROR");
+  }
+
+  return {
+    serviceDate: serviceDateValue,
+    shift: input.shift,
+    passengerGroup: input.passengerGroup,
+    busName,
+    busNumber,
+    driverProfileId,
+    driverEmail,
+    status: input.status || "ACTIVE",
+  };
 }
 
-function assignmentStops(route) { return route.split(" to "); }
 function assignmentTrip(idValue, assignment, bus, driver, direction) {
   const definition = SHIFT_DEFINITIONS[assignment.shift][direction === "OUTBOUND" ? "outbound" : "return"];
-  return { id: `${idValue}-${direction}`, assignment_id: idValue, bus_id: bus.id, driver_profile_id: driver.id, service_date: assignment.serviceDate, shift: assignment.shift, passenger_group: assignment.passengerGroup, direction, route: definition.route, stops: assignmentStops(definition.route), departure_time: definition.departureTime, arrival_time: definition.departureTime, status: "Scheduled", reservation_status: assignment.status === "ACTIVE" ? "OPEN" : "CLOSED", operational_status: assignment.status === "ACTIVE" ? "SCHEDULED" : assignment.status };
+
+  let targetRouteId = definition.routeId;
+  const outboundRouteIds = ["CUET_STATION_DIRECT", "CUET_STATION_GEC", "CUET_STATION_FLYOVER_GEC"];
+  const returnRouteIds = ["STATION_CUET_BAHADDARHAT", "STATION_CUET_GEC"];
+
+  if (bus?.route_id) {
+    if (direction === "OUTBOUND" && outboundRouteIds.includes(bus.route_id)) {
+      targetRouteId = bus.route_id;
+    } else if (direction === "RETURN" && returnRouteIds.includes(bus.route_id)) {
+      targetRouteId = bus.route_id;
+    }
+  }
+
+  const routeRecord = PREDEFINED_ROUTES.find((r) => r.id === targetRouteId) || PREDEFINED_ROUTES[0];
+  const routeName = routeRecord.name;
+  const stops = routeRecord.stops;
+
+  return {
+    id: `${idValue}-${direction}`,
+    assignment_id: idValue,
+    bus_id: bus.id,
+    driver_profile_id: driver.id,
+    service_date: assignment.serviceDate,
+    shift: assignment.shift,
+    passenger_group: assignment.passengerGroup,
+    direction,
+    route_id: targetRouteId,
+    route: routeName,
+    stops,
+    departure_time: definition.departureTime,
+    arrival_time: definition.arrivalTime || definition.departureTime,
+    status: "Scheduled",
+    reservation_status: assignment.status === "ACTIVE" ? "OPEN" : "CLOSED",
+    operational_status: assignment.status === "ACTIVE" ? "SCHEDULED" : assignment.status,
+  };
 }
 
 export function validateDriverForAssignment(driver) {
@@ -619,13 +970,40 @@ export function validateDriverForAssignment(driver) {
 }
 
 export async function adminAssignments() {
-  const { data, error } = await getSupabaseAdmin().from("transport_assignments").select("*, buses(*), profiles!transport_assignments_driver_profile_id_fkey(full_name,email), transport_trips(*)").order("service_date", { ascending: false }).order("shift");
+  const { data, error } = await getSupabaseAdmin()
+    .from("transport_assignments")
+    .select("*, buses(*), profiles!transport_assignments_driver_profile_id_fkey(id,full_name,email), transport_trips(*)")
+    .order("service_date", { ascending: false })
+    .order("shift");
   if (error) throw transportError(error, "read assignments");
-  return (data || []).map((row) => ({ id: row.id, serviceDate: row.service_date, shift: row.shift, passengerGroup: row.passenger_group, passengerGroupLabel: GROUP_LABELS[row.passenger_group], status: row.status, busId: row.bus_id, busName: row.buses?.name, busNumber: row.buses?.number, driverEmail: row.profiles?.email, driverName: row.profiles?.full_name, trips: (row.transport_trips || []).map(serializeTrip) }));
+  return (data || []).map((row) => ({
+    id: row.id,
+    serviceDate: row.service_date,
+    shift: row.shift,
+    passengerGroup: row.passenger_group,
+    passengerGroupLabel: GROUP_LABELS[row.passenger_group],
+    status: row.status,
+    busId: row.bus_id,
+    busName: row.buses?.name,
+    busNumber: row.buses?.number,
+    driverProfileId: row.driver_profile_id,
+    driverId: row.driver_profile_id,
+    driverEmail: row.profiles?.email,
+    driverName: formatDriverDisplayName(row.profiles),
+    trips: (row.transport_trips || []).map(serializeTrip),
+  }));
 }
 
 export async function saveAdminAssignment(input) {
-  const assignment = assignmentInput(input); const admin = getSupabaseAdmin();
+  const admin = getSupabaseAdmin();
+  let bus = null;
+  if (input.busId) {
+    const { data: foundBus, error: busLookupError } = await admin.from("buses").select("*").eq("id", input.busId).maybeSingle();
+    if (busLookupError) throw transportError(busLookupError, "read bus");
+    if (!foundBus) throw new AppError(404, "Selected bus does not exist in the database.", "BUS_NOT_FOUND");
+    bus = foundBus;
+  }
+  const assignment = assignmentInput(input, bus);
   if (input.id) {
     const { data: current, error: currentError } = await admin.from("transport_assignments").select("passenger_group").eq("id", input.id).maybeSingle();
     if (currentError) throw transportError(currentError, "read assignment");
@@ -637,15 +1015,46 @@ export async function saveAdminAssignment(input) {
       if (count) throw new AppError(409, "Resolve affected active reservations before changing the passenger group.", "ASSIGNMENT_RESOLUTION_REQUIRED");
     }
   }
-  const { data: driver, error: driverError } = await admin.from("profiles").select("*").ilike("email", assignment.driverEmail).maybeSingle();
-  if (driverError) throw transportError(driverError, "validate Driver");
+  let driver = null;
+  if (assignment.driverProfileId) {
+    const { data: foundDriver, error: driverError } = await admin
+      .from("profiles")
+      .select("*")
+      .eq("id", assignment.driverProfileId)
+      .maybeSingle();
+    if (driverError) throw transportError(driverError, "validate Driver");
+    driver = foundDriver;
+  } else if (assignment.driverEmail) {
+    const { data: foundDriver, error: driverError } = await admin
+      .from("profiles")
+      .select("*")
+      .ilike("email", assignment.driverEmail)
+      .maybeSingle();
+    if (driverError) throw transportError(driverError, "validate Driver");
+    driver = foundDriver;
+  }
   validateDriverForAssignment(driver);
-  const { data: existingBus, error: busError } = await admin.from("buses").select("*").eq("number", assignment.busNumber).maybeSingle();
-  if (busError) throw transportError(busError, "validate bus");
-  if (existingBus && existingBus.name !== assignment.busName) throw new AppError(409, "Bus number is already registered to a different bus.", "BUS_NUMBER_CONFLICT");
-  let bus = existingBus;
   if (!bus) {
-    const { data: createdBus, error: createBusError } = await admin.from("buses").insert({ id: id("BUS"), name: assignment.busName, number: assignment.busNumber, category: "Student Bus", capacity: Number(input.capacity || 40), route: SHIFT_DEFINITIONS[assignment.shift].outbound.route, stops: assignmentStops(SHIFT_DEFINITIONS[assignment.shift].outbound.route), departure_time: SHIFT_DEFINITIONS[assignment.shift].outbound.departureTime, arrival_time: SHIFT_DEFINITIONS[assignment.shift].outbound.departureTime, status: "On Time" }).select("*").single();
+    const { data: existingBus, error: busError } = await admin.from("buses").select("*").eq("number", assignment.busNumber).maybeSingle();
+    if (busError) throw transportError(busError, "validate bus");
+    if (existingBus && existingBus.name !== assignment.busName) throw new AppError(409, "Bus number is already registered to a different bus.", "BUS_NUMBER_CONFLICT");
+    bus = existingBus;
+  }
+  if (!bus) {
+    const defaultRoute = PREDEFINED_ROUTES[0];
+    const { data: createdBus, error: createBusError } = await admin.from("buses").insert({
+      id: id("BUS"),
+      name: assignment.busName,
+      number: assignment.busNumber,
+      category: "Student Bus",
+      capacity: Number(input.capacity || 40),
+      route_id: defaultRoute.id,
+      route: defaultRoute.name,
+      stops: defaultRoute.stops,
+      departure_time: SHIFT_DEFINITIONS[assignment.shift].outbound.departureTime,
+      arrival_time: SHIFT_DEFINITIONS[assignment.shift].outbound.arrivalTime || SHIFT_DEFINITIONS[assignment.shift].outbound.departureTime,
+      status: "On Time"
+    }).select("*").single();
     if (createBusError) throw transportError(createBusError, "create the assigned bus", "BUS_CREATE_FAILED");
     bus = createdBus;
   }
@@ -657,7 +1066,22 @@ export async function saveAdminAssignment(input) {
   if (tripError) throw transportError(tripError, "create assignment trips");
   const { error: notificationError } = await admin.from("notifications").insert({ id: id("NTF"), profile_id: driver.id, type: "assignment", title: "Daily bus assignment", message: `${assignment.serviceDate}: ${assignment.shift} / ${GROUP_LABELS[assignment.passengerGroup]} / ${assignment.busName} (${assignment.busNumber})`, tone: "info" });
   if (notificationError) throw transportError(notificationError, "notify the assigned Driver");
-  return { id: data.id, serviceDate: data.service_date, shift: data.shift, passengerGroup: data.passenger_group, passengerGroupLabel: GROUP_LABELS[data.passenger_group], status: data.status, busId: bus.id, busName: bus.name, busNumber: bus.number, driverEmail: driver.email, driverName: driver.full_name, trips: trips.map((trip) => serializeTrip({ ...trip, buses: bus })) };
+  return {
+    id: data.id,
+    serviceDate: data.service_date,
+    shift: data.shift,
+    passengerGroup: data.passenger_group,
+    passengerGroupLabel: GROUP_LABELS[data.passenger_group],
+    status: data.status,
+    busId: bus.id,
+    busName: bus.name,
+    busNumber: bus.number,
+    driverProfileId: driver.id,
+    driverId: driver.id,
+    driverEmail: driver.email,
+    driverName: formatDriverDisplayName(driver),
+    trips: trips.map((trip) => serializeTrip({ ...trip, buses: bus })),
+  };
 }
 
 export async function cancelAdminAssignment(assignmentId) {
@@ -672,27 +1096,68 @@ export async function cancelAdminAssignment(assignmentId) {
   return true;
 }
 
+export function serializeAdminUser(row) {
+  return {
+    id: row.id,
+    name: row.full_name || "Unknown User",
+    universityId: row.institutional_id || row.student_id || row.id,
+    role: ROLE_LABELS[row.user_type] || row.user_type,
+    userType: row.user_type,
+    email: row.email,
+    phone: row.phone || null,
+    gender: row.gender || null,
+    department: row.department_name || null,
+    departmentCode: row.department_code || null,
+    studentId: row.student_id || null,
+    institutionalId: row.institutional_id || null,
+    isVerified: Boolean(row.is_verified),
+    approvalStatus: row.approval_status || "PENDING",
+    registrationStatus: row.registration_status || "PENDING",
+    status: row.is_active ? "Active" : "Inactive",
+    createdAt: row.created_at,
+  };
+}
+
 export async function adminUsers() {
   const { data, error } = await getSupabaseAdmin().from("profiles").select("*").order("full_name");
   if (error) throw transportError(error, "read users");
-  return (data || []).map((row) => ({ id: row.id, name: row.full_name, universityId: row.institutional_id || row.student_id || row.id, role: ROLE_LABELS[row.user_type], email: row.email, status: row.is_active ? "Active" : "Inactive" }));
+  return (data || []).map((row) => serializeAdminUser(row));
 }
 
 export async function updateAdminUser(profileId, updates) {
   if (updates.role) throw new AppError(400, "Identity roles cannot be changed from transport management.", "ROLE_CHANGE_UNSAFE");
   const values = {};
-  if (updates.status) values.is_active = updates.status === "Active";
+  if (updates.status !== undefined) values.is_active = updates.status === "Active";
+  if (updates.isActive !== undefined) values.is_active = Boolean(updates.isActive);
   const { data, error } = await getSupabaseAdmin().from("profiles").update(values).eq("id", profileId).select("*").single();
   if (error) throw transportError(error, "update user");
-  return { id: data.id, name: data.full_name, universityId: data.institutional_id || data.student_id || data.id, role: ROLE_LABELS[data.user_type], email: data.email, status: data.is_active ? "Active" : "Inactive" };
+  return serializeAdminUser(data);
 }
 
 export async function adminDrivers() {
-  const { data, error } = await getSupabaseAdmin().from("profiles").select("*, driver_assignments(*, buses(*))").eq("user_type", "DRIVER").order("full_name");
+  const { data, error } = await getSupabaseAdmin()
+    .from("profiles")
+    .select("*, driver_assignments(*, buses(*))")
+    .eq("user_type", "DRIVER")
+    .order("full_name");
   if (error) throw transportError(error, "read Drivers");
   return (data || []).map((profile) => {
     const assignment = Array.isArray(profile.driver_assignments) ? profile.driver_assignments[0] : profile.driver_assignments;
-    return { id: profile.id, name: profile.full_name, assignedBusId: assignment?.bus_id || "", assignedBus: assignment?.buses?.name || "Unassigned", contact: profile.phone, status: assignment?.status || (profile.is_active ? "Available" : "Suspended"), completedTrips: assignment?.completed_trips || 0 };
+    const name = formatDriverDisplayName(profile);
+    return {
+      id: profile.id,
+      name,
+      fullName: profile.full_name || name,
+      email: profile.email,
+      phone: profile.phone,
+      isVerified: profile.is_verified,
+      isActive: profile.is_active,
+      assignedBusId: assignment?.bus_id || "",
+      assignedBus: assignment?.buses?.name || "Unassigned",
+      contact: profile.phone,
+      status: assignment?.status || (profile.is_active ? "Available" : "Suspended"),
+      completedTrips: assignment?.completed_trips || 0,
+    };
   });
 }
 
@@ -732,13 +1197,22 @@ export async function operationalAlerts() {
 }
 
 export async function adminOverview() {
-  const [buses, schedules, reservations, maintenance, alerts] = await Promise.all([adminBuses(), adminSchedules(), listReservations(null, { all: true }), maintenanceRecords(), operationalAlerts()]);
+  const [buses, schedules, reservations, maintenance, alerts, users] = await Promise.all([
+    adminBuses(),
+    adminSchedules(),
+    listReservations(null, { all: true }),
+    maintenanceRecords(),
+    operationalAlerts(),
+    adminUsers().catch(() => []),
+  ]);
   const today = serviceDate();
   return { buses, schedules, reservations, maintenance, alerts, stats: {
     totalBuses: buses.length,
     activeBuses: buses.filter((bus) => !["Arrived", "Under Maintenance"].includes(bus.status)).length,
     todayTrips: schedules.filter((item) => item.date === today).length,
     totalReservations: reservations.filter((item) => item.status !== "Cancelled").length,
+    totalUsers: users.length,
+    activeUsers: users.filter((u) => u.status === "Active").length,
     availableSeats: buses.reduce((sum, bus) => sum + Number(bus.availableSeats || 0), 0),
     delayedBuses: schedules.filter((item) => item.status === "Delayed").length,
     maintenanceBuses: maintenance.filter((item) => item.status === "Under Maintenance").length,

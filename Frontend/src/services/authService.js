@@ -19,7 +19,10 @@ function makeUser(profile) {
     role,
     roleLabel: ROLE_LABELS[role],
     gender: profile.gender,
+    batch: profile.batch,
     department: profile.department,
+    departmentCode: profile.departmentCode,
+    studentId: profile.studentId,
     profileImage: profile.profileImage,
     preferences: profile.preferences || { email: true, push: true },
     destination: getDashboardForRole(role),
@@ -37,15 +40,22 @@ function makeAuthState({ profile, session, remember }) {
 export async function login(credentials) {
   if (!credentials.identifier || !credentials.password) throw new Error("Enter your university email and password.");
 
+  const remember = credentials.remember !== false;
   const result = await apiRequest("/auth/login", {
     method: "POST",
-    body: { email: credentials.identifier, password: credentials.password, remember: Boolean(credentials.remember) },
+    body: { email: credentials.identifier, password: credentials.password, remember },
   });
-  return makeAuthState({ profile: result.user, session: result.session, remember: credentials.remember });
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("safar_logged_out");
+  }
+  return makeAuthState({ profile: result.user, session: result.session, remember });
 }
 
 export async function register(input) {
   const result = await apiRequest("/auth/register", { method: "POST", body: input });
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("safar_logged_out");
+  }
   if (!result.session) return result;
   const authState = makeAuthState({ profile: result.user, session: result.session, remember: true });
   return { ...result, authState };
@@ -73,17 +83,42 @@ export async function resetPassword(accessToken, password, confirmPassword) {
 
 export async function refresh() {
   const result = await apiRequest("/auth/refresh", { method: "POST" });
-  return makeAuthState({ profile: result.user, session: result.session, remember: false });
+  return makeAuthState({ profile: result.user, session: result.session, remember: true });
 }
 
 export async function restoreSession() {
-  try {
-    const result = await apiRequest("/auth/me");
-    return { user: makeUser(result.user) };
-  } catch (error) {
-    if (error.status === 401 || error.status === 403) return null;
+  if (typeof window !== "undefined" && localStorage.getItem("safar_logged_out") === "true") {
     return null;
   }
+  try {
+    const result = await apiRequest("/auth/me", { silent: true });
+    if (result?.user) {
+      return { user: makeUser(result.user) };
+    }
+  } catch (error) {
+    if (error?.status === 401) {
+      if (error?.code === "SESSION_EXPIRED") {
+        return { expired: true };
+      }
+      try {
+        const refreshResult = await apiRequest("/auth/refresh", {
+          method: "POST",
+          silent: true,
+          retryOnUnauthorized: false,
+        });
+        if (refreshResult?.user) {
+          return { user: makeUser(refreshResult.user) };
+        }
+      } catch (refreshError) {
+        if (refreshError?.code === "SESSION_EXPIRED") {
+          return { expired: true };
+        }
+        return null;
+      }
+    }
+    return null;
+  }
+  return null;
 }
 
 export async function getCurrentUser() {
@@ -96,7 +131,10 @@ export async function updateProfile(updates) {
 }
 
 export async function logout() {
-  await apiRequest("/auth/logout", { method: "POST" });
+  if (typeof window !== "undefined") {
+    localStorage.setItem("safar_logged_out", "true");
+  }
+  await apiRequest("/auth/logout", { method: "POST", silent: true });
 }
 
 export async function changePassword(password, confirmPassword) {

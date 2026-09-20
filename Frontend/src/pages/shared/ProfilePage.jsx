@@ -1,4 +1,4 @@
-import { Globe2, Moon, Phone, User } from "lucide-react";
+import { Building2, Calendar, FileText, Globe2, Moon, Phone, User } from "lucide-react";
 import Badge from "../../components/common/Badge";
 import PageHeader from "../../components/layout/PageHeader";
 import DashboardLayout from "../../layouts/DashboardLayout";
@@ -41,6 +41,27 @@ export default function ProfilePage({ role }) {
                 <Globe2 className="h-4 w-4 text-safar-teal" />
                 <span className="text-safar-gray">{user.universityId || user.id}</span>
               </div>
+              {user.department && (
+                <div className="flex items-center gap-3">
+                  <Building2 className="h-4 w-4 text-safar-teal" />
+                  <span className="text-safar-gray">Department:</span>
+                  <span className="font-semibold text-safar-ink">{user.department}</span>
+                </div>
+              )}
+              {user.batch && (
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-4 w-4 text-safar-teal" />
+                  <span className="text-safar-gray">Batch:</span>
+                  <span className="font-semibold text-safar-ink">{user.batch}</span>
+                </div>
+              )}
+              {user.studentId && (
+                <div className="flex items-center gap-3">
+                  <FileText className="h-4 w-4 text-safar-teal" />
+                  <span className="text-safar-gray">Student ID:</span>
+                  <span className="font-semibold text-safar-ink">{user.studentId}</span>
+                </div>
+              )}
             </dl>
           </div>
 

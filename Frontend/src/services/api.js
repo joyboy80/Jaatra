@@ -24,10 +24,22 @@ function refreshSession() {
   return refreshRequest;
 }
 
-export async function apiRequest(path, { method = "GET", body, token, signal, retryOnUnauthorized = true } = {}) {
+const NON_REFRESHABLE_AUTH_PATHS = [
+  "/auth/refresh",
+  "/auth/login",
+  "/auth/register",
+  "/auth/verify-otp",
+  "/auth/send-otp",
+  "/auth/resend-otp",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
+
+export async function apiRequest(path, { method = "GET", body, token, signal, retryOnUnauthorized = true, silent = false } = {}) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+    response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
       method,
       signal,
       credentials: "include",
@@ -39,16 +51,26 @@ export async function apiRequest(path, { method = "GET", body, token, signal, re
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
   } catch (cause) {
+    if (cause?.code === "API_ERROR" || cause?.status) {
+      throw cause;
+    }
     const error = new Error("The SAFAR backend could not be reached.", { cause });
     error.code = "NETWORK_ERROR";
-    notifyApiError(error);
+    if (!silent) {
+      notifyApiError(error);
+    }
     throw error;
   }
 
-  if (response.status === 401 && retryOnUnauthorized && !path.startsWith("/auth/")) {
+  const isExcludedFromRefresh = NON_REFRESHABLE_AUTH_PATHS.some((p) => normalizedPath.startsWith(p));
+  if (response.status === 401 && retryOnUnauthorized && !isExcludedFromRefresh) {
     const refreshed = await refreshSession();
-    if (refreshed.ok) return apiRequest(path, { method, body, token, signal, retryOnUnauthorized: false });
-    notifySessionExpired();
+    if (refreshed?.ok) {
+      return apiRequest(path, { method, body, token, signal, retryOnUnauthorized: false, silent });
+    }
+    if (!silent) {
+      notifySessionExpired();
+    }
   }
 
   let payload = null;
@@ -68,7 +90,9 @@ export async function apiRequest(path, { method = "GET", body, token, signal, re
     error.status = response.status;
     error.code = payload?.error?.code || "API_ERROR";
     error.details = payload?.error?.details;
-    notifyApiError(error);
+    if (!silent) {
+      notifyApiError(error);
+    }
     throw error;
   }
 

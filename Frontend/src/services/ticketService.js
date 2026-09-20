@@ -12,6 +12,7 @@ export async function getTicketById(userId, ticketId) {
 
 export async function downloadTicket(ticketId) {
   const response = await fetch(`/api/transport/tickets/${encodeURIComponent(ticketId)}/download`, {
+    credentials: "include",
     headers: { Authorization: `Bearer ${localStorage.getItem("safar_access")}` } // fallback if needed, but cookies are used
   });
   if (!response.ok) throw new Error("Failed to download ticket.");
@@ -28,6 +29,7 @@ export async function downloadTicket(ticketId) {
 
 export async function downloadInvoice(ticketId, invoiceNumber) {
   const response = await fetch(`/api/transport/tickets/${encodeURIComponent(ticketId)}/invoice`, {
+    credentials: "include",
     headers: { Authorization: `Bearer ${localStorage.getItem("safar_access")}` }
   });
   if (!response.ok) throw new Error("Failed to download invoice.");

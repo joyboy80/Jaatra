@@ -1,5 +1,5 @@
 import { BusFront, Clock, MapPinned, Navigation, Ticket, Users } from "lucide-react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Badge from "../../components/common/Badge";
 import StatCard from "../../components/common/StatCard";
@@ -11,19 +11,21 @@ import ErrorState from "../../components/common/ErrorState";
 
 export default function BusDetailsPage({ role }) {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const date = searchParams.get("date") || "";
   const [bus, setBus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   useEffect(() => {
     setLoading(true);
-    getBusByRole(role, id).then(setBus).catch((requestError) => setError(requestError.message)).finally(() => setLoading(false));
-  }, [id, role]);
+    getBusByRole(role, id, date).then(setBus).catch((requestError) => setError(requestError.message)).finally(() => setLoading(false));
+  }, [id, role, date]);
 
   if (loading) return <DashboardLayout><Loading label="Loading bus details" /></DashboardLayout>;
   if (error) return <DashboardLayout><ErrorState title="Bus details unavailable" message={error} /></DashboardLayout>;
 
   if (!bus) {
-    return <Navigate to={`/${role}/today-buses`} replace />;
+    return <Navigate to={`/${role}/available-buses`} replace />;
   }
 
   return (
@@ -37,7 +39,7 @@ export default function BusDetailsPage({ role }) {
             <>
               <Link
                 className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-safar-teal px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-safar-navy"
-                to={`/${role}/reservations/new?busId=${encodeURIComponent(bus.id)}`}
+                to={`/${role}/reservations/new?busId=${encodeURIComponent(bus.id)}${date ? `&date=${encodeURIComponent(date)}` : ""}`}
               >
                 <Ticket className="h-4 w-4" />
                 Reserve Seat
